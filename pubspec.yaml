@@ -27,6 +27,8 @@ dependencies:
   macos_window_utils: ^1.8.1
   cupertino_icons: ^1.0.8
   url_launcher: ^6.3.1
+  dio: ^5.8.0+1
+  dio_cache_interceptor: ^4.0.3
 
 dev_dependencies:
   flutter_test:

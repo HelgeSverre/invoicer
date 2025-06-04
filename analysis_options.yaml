@@ -6,6 +6,10 @@ linter:
     always_use_package_imports: true
 
 
-
 formatter:
   trailing_commas: preserve
+
+
+analyzer:
+  errors:
+    deprecated_member_use: "ignore"

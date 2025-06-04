@@ -1,7 +1,6 @@
 class ReceiptItem {
   String? sku;
   String text;
-  String? currency;
   double unitPrice;
   int quantity;
 
@@ -10,7 +9,6 @@ class ReceiptItem {
   ReceiptItem({
     this.sku,
     required this.text,
-    this.currency,
     required this.unitPrice,
     required this.quantity,
   });
@@ -19,9 +17,54 @@ class ReceiptItem {
     return ReceiptItem(
       sku: json['sku'],
       text: json['text'] ?? '',
-      currency: json['currency'],
       unitPrice: (json['unit_price'] ?? 0).toDouble(),
       quantity: json['quantity'] ?? 1,
+    );
+  }
+}
+
+class ProjectFolder {
+  String path;
+  String name;
+  DateTime addedAt;
+  int fileCount;
+
+  ProjectFolder({
+    required this.path,
+    required this.name,
+    required this.addedAt,
+    this.fileCount = 0,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'path': path,
+      'name': name,
+      'addedAt': addedAt.toIso8601String(),
+      'fileCount': fileCount,
+    };
+  }
+
+  factory ProjectFolder.fromJson(Map<String, dynamic> json) {
+    return ProjectFolder(
+      path: json['path'],
+      name: json['name'],
+      addedAt: DateTime.parse(json['addedAt']),
+      fileCount: json['fileCount'] ?? 0,
+    );
+  }
+
+  ProjectFolder copyWith({
+    String? path,
+    String? name,
+    DateTime? addedAt,
+    int? fileCount,
+  }) {
+    return ProjectFolder(
+      path: path ?? this.path,
+      name: name ?? this.name,
+      addedAt: addedAt ?? this.addedAt,
+      fileCount: fileCount ?? this.fileCount,
     );
   }
 }
@@ -33,9 +76,13 @@ class PdfDocument {
   bool isProcessing;
   String? vendor;
 
-  // Invoice details
+  // Source information
+  String source; // 'folder' or 'individual'
+  String? folderPath; // null for individual files
+
   DateTime? invoiceDate;
   DateTime? dueDate;
+  String? currency;
   double? taxAmount;
   double? totalAmount;
   double? discountAmount;
@@ -53,8 +100,11 @@ class PdfDocument {
     this.items = const [],
     this.isProcessing = false,
     this.vendor,
+    this.source = 'folder',
+    this.folderPath,
     this.invoiceDate,
     this.dueDate,
+    this.currency,
     this.taxAmount,
     this.totalAmount,
     this.discountAmount,
@@ -70,6 +120,7 @@ class PdfDocument {
       vendor != null ||
       invoiceDate != null ||
       dueDate != null ||
+      currency != null ||
       taxAmount != null ||
       totalAmount != null ||
       discountAmount != null ||
@@ -85,8 +136,11 @@ class PdfDocument {
     List<ReceiptItem>? items,
     bool? isProcessing,
     String? vendor,
+    String? source,
+    String? folderPath,
     DateTime? invoiceDate,
     DateTime? dueDate,
+    String? currency,
     double? taxAmount,
     double? totalAmount,
     double? discountAmount,
@@ -103,8 +157,11 @@ class PdfDocument {
       items: items ?? this.items,
       isProcessing: isProcessing ?? this.isProcessing,
       vendor: vendor ?? this.vendor,
+      source: source ?? this.source,
+      folderPath: folderPath ?? this.folderPath,
       invoiceDate: invoiceDate ?? this.invoiceDate,
       dueDate: dueDate ?? this.dueDate,
+      currency: currency ?? this.currency,
       taxAmount: taxAmount ?? this.taxAmount,
       totalAmount: totalAmount ?? this.totalAmount,
       discountAmount: discountAmount ?? this.discountAmount,

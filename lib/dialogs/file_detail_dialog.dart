@@ -23,6 +23,8 @@ class FileDetailDialog extends StatefulWidget {
 
 class _FileDetailDialogState extends State<FileDetailDialog> {
   late final AppState appState;
+  late final PdfViewerController _pdfViewerController;
+  final FocusNode _dialogFocusNode = FocusNode();
   String? _recentlyCopiedValue;
   Timer? _copyIndicatorTimer;
 
@@ -30,20 +32,122 @@ class _FileDetailDialogState extends State<FileDetailDialog> {
   void initState() {
     super.initState();
     appState = AppState();
+    _pdfViewerController = PdfViewerController();
+
+    // Request focus when dialog opens
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _dialogFocusNode.requestFocus();
+    });
   }
 
   @override
   void dispose() {
     _copyIndicatorTimer?.cancel();
+    _pdfViewerController.dispose();
+    _dialogFocusNode.dispose();
     super.dispose();
   }
 
   // Get the current file state from the app state
   PdfDocument? get currentFile {
-    return appState.pdfFiles.firstWhere(
-      (file) => file.path == widget.initialFile.path,
-      orElse: () => widget.initialFile,
-    );
+    // Check in folder files first
+    try {
+      return appState.pdfFiles.firstWhere(
+        (file) => file.path == widget.initialFile.path,
+      );
+    } catch (e) {
+      // If not found in folder files, check individual files
+      try {
+        return appState.individualFiles.firstWhere(
+          (file) => file.path == widget.initialFile.path,
+        );
+      } catch (e) {
+        // Fall back to initial file
+        return widget.initialFile;
+      }
+    }
+  }
+
+  // Search methods
+  void _toggleSearch() {
+    setState(() {
+      _isSearchVisible = !_isSearchVisible;
+      if (!_isSearchVisible) {
+        _searchController.clear();
+        _searchResult?.clear();
+        _searchResult = null;
+        _currentSearchIndex = 0;
+        _dialogFocusNode.requestFocus();
+      } else {
+        // Clear any previous search results and focus the search field when opening
+        _searchController.clear();
+        _searchResult?.clear();
+        _searchResult = null;
+        _currentSearchIndex = 0;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _searchFocusNode.requestFocus();
+        });
+      }
+    });
+  }
+
+  Future<void> _performSearch(String searchText) async {
+    if (searchText.trim().isEmpty) {
+      setState(() {
+        _searchResult?.clear();
+        _searchResult = null;
+        _currentSearchIndex = 0;
+      });
+      return;
+    }
+
+    setState(() {
+      _isSearching = true;
+    });
+
+    try {
+      _searchResult = _pdfViewerController.searchText(searchText);
+      if (_searchResult != null && _searchResult!.totalInstanceCount > 0) {
+        setState(() {
+          _currentSearchIndex = 1;
+        });
+      } else {
+        setState(() {
+          _currentSearchIndex = 0;
+        });
+      }
+    } catch (e) {
+      debugPrint('Search error: $e');
+      setState(() {
+        _searchResult = null;
+        _currentSearchIndex = 0;
+      });
+    } finally {
+      setState(() {
+        _isSearching = false;
+      });
+    }
+  }
+
+  void _nextSearchResult() {
+    if (_searchResult != null && _searchResult!.totalInstanceCount > 0) {
+      _searchResult!.nextInstance();
+      setState(() {
+        _currentSearchIndex =
+            (_currentSearchIndex % _searchResult!.totalInstanceCount) + 1;
+      });
+    }
+  }
+
+  void _previousSearchResult() {
+    if (_searchResult != null && _searchResult!.totalInstanceCount > 0) {
+      _searchResult!.previousInstance();
+      setState(() {
+        _currentSearchIndex = _currentSearchIndex > 1
+            ? _currentSearchIndex - 1
+            : _searchResult!.totalInstanceCount;
+      });
+    }
   }
 
   @override
@@ -51,37 +155,87 @@ class _FileDetailDialogState extends State<FileDetailDialog> {
     return MacosSheet(
       insetAnimationDuration: const Duration(milliseconds: 300),
       insetAnimationCurve: Curves.easeInOut,
-      child: SizedBox(
-        width: 1200,
-        height: 800,
-        child: Watch((context) {
-          final file = currentFile;
-          if (file == null) {
-            return const Center(child: Text('File not found'));
+      child: Focus(
+        focusNode: _dialogFocusNode,
+        onKeyEvent: (node, event) {
+          // Only handle shortcuts when search field is not focused
+          if (_searchFocusNode.hasFocus) {
+            return KeyEventResult.ignored;
           }
 
-          return Column(
-            children: [
-              // Header
-              _buildHeader(context, file),
+          if (event is KeyDownEvent) {
+            // CMD+F to toggle search
+            if (event.logicalKey == LogicalKeyboardKey.keyF &&
+                HardwareKeyboard.instance.logicalKeysPressed
+                    .contains(LogicalKeyboardKey.meta)) {
+              _toggleSearch();
+              return KeyEventResult.handled;
+            }
 
-              // Split content
-              Expanded(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Left side - PDF Preview
-                    _buildPdfPreview(context, file),
+            // ESC to close search
+            if (event.logicalKey == LogicalKeyboardKey.escape &&
+                _isSearchVisible) {
+              _toggleSearch();
+              return KeyEventResult.handled;
+            }
 
-                    // Right side - Details
-                    _buildDetailsPanel(context, file),
-                  ],
+            // CMD+G to go to next result
+            if (event.logicalKey == LogicalKeyboardKey.keyG &&
+                HardwareKeyboard.instance.logicalKeysPressed
+                    .contains(LogicalKeyboardKey.meta) &&
+                !HardwareKeyboard.instance.logicalKeysPressed
+                    .contains(LogicalKeyboardKey.shift) &&
+                _isSearchVisible) {
+              _nextSearchResult();
+              return KeyEventResult.handled;
+            }
+
+            // CMD+Shift+G to go to previous result
+            if (event.logicalKey == LogicalKeyboardKey.keyG &&
+                HardwareKeyboard.instance.logicalKeysPressed
+                    .contains(LogicalKeyboardKey.meta) &&
+                HardwareKeyboard.instance.logicalKeysPressed
+                    .contains(LogicalKeyboardKey.shift) &&
+                _isSearchVisible) {
+              _previousSearchResult();
+              return KeyEventResult.handled;
+            }
+          }
+
+          return KeyEventResult.ignored;
+        },
+        child: SizedBox(
+          width: 1200,
+          height: 800,
+          child: Watch((context) {
+            final file = currentFile;
+            if (file == null) {
+              return const Center(child: Text('File not found'));
+            }
+
+            return Column(
+              children: [
+                // Header
+                _buildHeader(context, file),
+
+                // Split content
+                Expanded(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Left side - PDF Preview
+                      _buildPdfPreview(context, file),
+
+                      // Right side - Details
+                      _buildDetailsPanel(context, file),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          );
-        }),
+              ],
+            );
+          }),
+        ),
       ),
     );
   }
@@ -181,10 +335,23 @@ class _FileDetailDialogState extends State<FileDetailDialog> {
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: SfPdfViewer.file(
-              File(file.path),
-              enableDoubleTapZooming: true,
-              enableTextSelection: false,
+            child: Stack(
+              children: [
+                SfPdfViewer.file(
+                  File(file.path),
+                  controller: _pdfViewerController,
+                  enableDoubleTapZooming: true,
+                  enableTextSelection: true,
+                ),
+
+                // Search overlay
+                if (_isSearchVisible)
+                  Positioned(
+                    top: 12,
+                    right: 12,
+                    child: _buildSearchOverlay(context),
+                  ),
+              ],
             ),
           ),
         ),
@@ -485,6 +652,13 @@ class _FileDetailDialogState extends State<FileDetailDialog> {
             ),
 
           // Financial Details
+          if (file.currency != null)
+            _buildDataRow(
+              context,
+              'Currency',
+              file.currency,
+            ),
+
           if (file.totalAmount != null)
             _buildDataRow(
               context,
@@ -533,8 +707,8 @@ class _FileDetailDialogState extends State<FileDetailDialog> {
     return MacosTooltip(
       message: valueToCopy != '-'
           ? (_recentlyCopiedValue == valueToCopy
-                ? 'Copied!'
-                : 'Click to copy: $valueToCopy')
+              ? 'Copied!'
+              : 'Click to copy: $valueToCopy')
           : '',
       child: GestureDetector(
         onTap: valueToCopy != null && valueToCopy.isNotEmpty
@@ -552,9 +726,9 @@ class _FileDetailDialogState extends State<FileDetailDialog> {
                 child: Text(
                   '$label:',
                   style: MacosTheme.of(context).typography.body.copyWith(
-                    fontWeight: FontWeight.w400,
-                    color: CupertinoColors.systemGrey,
-                  ),
+                        fontWeight: FontWeight.w400,
+                        color: CupertinoColors.systemGrey,
+                      ),
                 ),
               ),
               Expanded(
@@ -564,16 +738,20 @@ class _FileDetailDialogState extends State<FileDetailDialog> {
                       child: value == null
                           ? Text(
                               "-",
-                              style: MacosTheme.of(context).typography.body
+                              style: MacosTheme.of(context)
+                                  .typography
+                                  .body
                                   .copyWith(
                                     fontWeight: FontWeight.w400,
                                     color: CupertinoColors.systemGrey
-                                        .withOpacity(.5),
+                                        .withValues(alpha: .5),
                                   ),
                             )
                           : Text(
                               value,
-                              style: MacosTheme.of(context).typography.body
+                              style: MacosTheme.of(context)
+                                  .typography
+                                  .body
                                   .copyWith(fontWeight: FontWeight.w500),
                             ),
                     ),
@@ -637,5 +815,146 @@ class _FileDetailDialogState extends State<FileDetailDialog> {
     } catch (e) {
       debugPrint('Could not open file location: $e');
     }
+  }
+
+  Widget _buildSearchOverlay(BuildContext context) {
+    return Container(
+      width: 320,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: MacosTheme.of(context).canvasColor.withValues(alpha: 0.98),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: MacosTheme.of(context).dividerColor),
+        boxShadow: [
+          BoxShadow(
+            color: CupertinoColors.black.withValues(alpha: 0.15),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              const MacosIcon(CupertinoIcons.search, size: 16),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Focus(
+                  onKeyEvent: (node, event) {
+                    // Handle Enter key in search field
+                    if (event is KeyDownEvent &&
+                        event.logicalKey == LogicalKeyboardKey.enter &&
+                        _searchController.text.isNotEmpty) {
+                      _nextSearchResult();
+                      return KeyEventResult.handled;
+                    }
+                    return KeyEventResult.ignored;
+                  },
+                  child: MacosTextField(
+                    controller: _searchController,
+                    focusNode: _searchFocusNode,
+                    placeholder: 'Search in PDF... (⌘F)',
+                    onChanged: (value) {
+                      _performSearch(value);
+                    },
+                    onSubmitted: (value) {
+                      if (value.isNotEmpty) {
+                        _nextSearchResult();
+                      }
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              MacosTooltip(
+                message: 'Close search (ESC)',
+                child: MacosIconButton(
+                  icon: const MacosIcon(CupertinoIcons.xmark, size: 16),
+                  onPressed: _toggleSearch,
+                ),
+              ),
+            ],
+          ),
+
+          if (_searchController.text.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                // Search results info
+                Expanded(
+                  child: _isSearching
+                      ? Row(
+                          children: [
+                            const SizedBox(
+                              width: 12,
+                              height: 12,
+                              child: ProgressCircle(radius: 6),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Searching...',
+                              style: MacosTheme.of(context).typography.caption1,
+                            ),
+                          ],
+                        )
+                      : _searchResult != null &&
+                              _searchResult!.totalInstanceCount > 0
+                          ? Text(
+                              '$_currentSearchIndex of ${_searchResult!.totalInstanceCount}',
+                              style: MacosTheme.of(context).typography.caption1,
+                            )
+                          : Text(
+                              'No results found',
+                              style: MacosTheme.of(context)
+                                  .typography
+                                  .caption1
+                                  .copyWith(color: CupertinoColors.systemRed),
+                            ),
+                ),
+
+                // Navigation buttons
+                const SizedBox(width: 8),
+                MacosTooltip(
+                  message: 'Previous result (⌘⇧G)',
+                  child: MacosIconButton(
+                    icon: const MacosIcon(CupertinoIcons.chevron_up, size: 14),
+                    onPressed: (_searchResult != null &&
+                            _searchResult!.totalInstanceCount > 0)
+                        ? _previousSearchResult
+                        : null,
+                  ),
+                ),
+                MacosTooltip(
+                  message: 'Next result (⌘G)',
+                  child: MacosIconButton(
+                    icon:
+                        const MacosIcon(CupertinoIcons.chevron_down, size: 14),
+                    onPressed: (_searchResult != null &&
+                            _searchResult!.totalInstanceCount > 0)
+                        ? _nextSearchResult
+                        : null,
+                  ),
+                ),
+              ],
+            ),
+          ],
+
+          // Keyboard shortcuts hint
+          if (_isSearchVisible && _searchController.text.isEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Tip: ⌘G for next, ⌘⇧G for previous, ESC to close',
+              style: MacosTheme.of(context).typography.caption1.copyWith(
+                    color: CupertinoColors.secondaryLabel,
+                    fontSize: 10,
+                  ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ],
+      ),
+    );
   }
 }
