@@ -12,14 +12,15 @@ class Extractor {
 
     dio.interceptors.add(
       DioCacheInterceptor(
-          options: CacheOptions(
-        store: MemCacheStore(
-          maxEntrySize: 100,
-          maxSize: 100 * 1024 * 1024, // 100 MB
+        options: CacheOptions(
+          store: MemCacheStore(
+            maxEntrySize: 100,
+            maxSize: 100 * 1024 * 1024, // 100 MB
+          ),
+          hitCacheOnNetworkFailure: true,
+          allowPostMethod: true,
         ),
-        hitCacheOnNetworkFailure: true,
-        allowPostMethod: true,
-      )),
+      ),
     );
 
     return dio;
@@ -46,7 +47,8 @@ class Extractor {
     }
 
     var prompt = {
-      'model': 'gpt-4o-mini',
+      // 'model': 'gpt-4o-mini',
+      'model': 'gpt-4.1-nano',
       'messages': [
         {
           'role': 'user',
@@ -114,7 +116,7 @@ class Extractor {
               },
               'last_four_digits': {
                 'type': 'string',
-                'description': 'Last four digits of payment card if applicable'
+                'description': 'Last four digits of payment card if applicable',
               },
               'items': {
                 'type': 'array',
@@ -148,8 +150,8 @@ class Extractor {
               },
             },
             'required': ['invoiceDate', 'totalAmount', 'vendor'],
-          }
-        }
+          },
+        },
       ],
     };
 

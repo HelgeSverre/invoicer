@@ -131,7 +131,6 @@ class _InvoicerMainScreenState extends State<InvoicerMainScreen> {
       ),
       children: [
         ContentArea(
-
           builder: (context, scrollController) {
             return FoldersView(appState: appState);
           },
@@ -149,15 +148,11 @@ class _InvoicerMainScreenState extends State<InvoicerMainScreen> {
       return MacosScaffold(
         toolBar: ToolBar(
           centerTitle: false,
-          title: Text(
-            currentFolder != null
-                ? 'Invoicer - ${currentFolder.name}'
-                : 'Invoicer - Files',
-          ),
+          title: Text('Invoicer'),
           actions: [
             ToolBarIconButton(
               label: 'Add Files',
-              icon: const MacosIcon(CupertinoIcons.plus_rectangle),
+              icon: const MacosIcon(CupertinoIcons.plus),
               onPressed: appState.addIndividualFiles,
               showLabel: false,
               tooltipMessage: 'Add individual PDF files',

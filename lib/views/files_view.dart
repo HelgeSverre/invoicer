@@ -31,7 +31,9 @@ class _FilesViewState extends State<FilesView> {
       }
 
       return DragTarget<List<String>>(
-        onAcceptWithDetails: (files) => _handleDroppedFiles(files.data),
+        onAcceptWithDetails: (files) {
+          _handleDroppedFiles(files.data);
+        },
         builder: (context, candidateData, rejectedData) {
           return Container(
             decoration: candidateData.isNotEmpty
@@ -82,11 +84,15 @@ class _FilesViewState extends State<FilesView> {
       onTap: () => _showFileDetails(file),
       behavior: HitTestBehavior.opaque,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        height: 42,
+        padding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 10,
+        ),
         decoration: BoxDecoration(
           color: index % 2 == 0
               ? MacosTheme.of(context).canvasColor
-              : MacosTheme.of(context).canvasColor.withOpacity(0.5),
+              : CupertinoColors.quaternarySystemFill,
           border: Border(
             bottom: BorderSide(
               color: MacosTheme.of(context).dividerColor,
@@ -231,11 +237,11 @@ class _FilesViewState extends State<FilesView> {
     if (file.error != null) {
       return CupertinoIcons.exclamationmark_triangle;
     } else if (file.vendor != null) {
-      return CupertinoIcons.doc_checkmark;
+      return CupertinoIcons.doc_checkmark_fill;
     } else if (file.isProcessing) {
       return CupertinoIcons.clock;
     } else {
-      return CupertinoIcons.doc;
+      return CupertinoIcons.doc_fill;
     }
   }
 
@@ -247,7 +253,7 @@ class _FilesViewState extends State<FilesView> {
     } else if (file.isProcessing) {
       return CupertinoColors.systemOrange;
     } else {
-      return CupertinoColors.secondaryLabel;
+      return CupertinoColors.systemGrey;
     }
   }
 
@@ -377,10 +383,23 @@ class _FilesViewState extends State<FilesView> {
       ),
       child: Row(
         children: [
-          const MacosIcon(CupertinoIcons.folder_fill, size: 16),
-          const SizedBox(width: 8),
+          MacosListTile(
+            leading: const Icon(CupertinoIcons.lightbulb),
+            title: Text(
+              'A robust library of Flutter components for macOS',
+              style: MacosTheme.of(context).typography.headline,
+            ),
+            subtitle: Text(
+              'Create native looking macOS applications using Flutter',
+              style: MacosTheme.of(context).typography.subheadline.copyWith(
+                color: MacosColors.systemGrayColor,
+              ),
+            ),
+          ),
+
           Expanded(
             child: Column(
+              spacing: 4,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
@@ -389,18 +408,11 @@ class _FilesViewState extends State<FilesView> {
                 ),
                 Text(
                   currentFolder.path,
-                  style: MacosTheme.of(context).typography.caption1.copyWith(
-                        color: CupertinoColors.secondaryLabel,
-                      ),
+                  style: MacosTheme.of(context).typography.caption1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
-          ),
-          PushButton(
-            controlSize: ControlSize.mini,
-            onPressed: () => widget.appState.currentView.value = 'folders',
-            child: const Text('Change Folder'),
           ),
         ],
       ),

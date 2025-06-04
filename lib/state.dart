@@ -41,7 +41,8 @@ class AppState {
 
   Future<void> loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
-    apiKey.value = dotenv.maybeGet(
+    apiKey.value =
+        dotenv.maybeGet(
           'OPENAI_API_KEY',
           fallback: prefs.getString('openai_api_key'),
         ) ??
@@ -296,7 +297,8 @@ class AppState {
       );
 
       final updatedFile = file.copyWith(
-        items: (result['items'] as List<dynamic>?)
+        items:
+            (result['items'] as List<dynamic>?)
                 ?.map((item) => ReceiptItem.fromJson(item))
                 .toList() ??
             [],

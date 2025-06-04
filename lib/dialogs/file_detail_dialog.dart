@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
-import 'package:intl/intl.dart';
 import 'package:invoicer/models.dart';
 import 'package:invoicer/state.dart';
 import 'package:macos_ui/macos_ui.dart';
@@ -68,88 +67,6 @@ class _FileDetailDialogState extends State<FileDetailDialog> {
     }
   }
 
-  // Search methods
-  void _toggleSearch() {
-    setState(() {
-      _isSearchVisible = !_isSearchVisible;
-      if (!_isSearchVisible) {
-        _searchController.clear();
-        _searchResult?.clear();
-        _searchResult = null;
-        _currentSearchIndex = 0;
-        _dialogFocusNode.requestFocus();
-      } else {
-        // Clear any previous search results and focus the search field when opening
-        _searchController.clear();
-        _searchResult?.clear();
-        _searchResult = null;
-        _currentSearchIndex = 0;
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _searchFocusNode.requestFocus();
-        });
-      }
-    });
-  }
-
-  Future<void> _performSearch(String searchText) async {
-    if (searchText.trim().isEmpty) {
-      setState(() {
-        _searchResult?.clear();
-        _searchResult = null;
-        _currentSearchIndex = 0;
-      });
-      return;
-    }
-
-    setState(() {
-      _isSearching = true;
-    });
-
-    try {
-      _searchResult = _pdfViewerController.searchText(searchText);
-      if (_searchResult != null && _searchResult!.totalInstanceCount > 0) {
-        setState(() {
-          _currentSearchIndex = 1;
-        });
-      } else {
-        setState(() {
-          _currentSearchIndex = 0;
-        });
-      }
-    } catch (e) {
-      debugPrint('Search error: $e');
-      setState(() {
-        _searchResult = null;
-        _currentSearchIndex = 0;
-      });
-    } finally {
-      setState(() {
-        _isSearching = false;
-      });
-    }
-  }
-
-  void _nextSearchResult() {
-    if (_searchResult != null && _searchResult!.totalInstanceCount > 0) {
-      _searchResult!.nextInstance();
-      setState(() {
-        _currentSearchIndex =
-            (_currentSearchIndex % _searchResult!.totalInstanceCount) + 1;
-      });
-    }
-  }
-
-  void _previousSearchResult() {
-    if (_searchResult != null && _searchResult!.totalInstanceCount > 0) {
-      _searchResult!.previousInstance();
-      setState(() {
-        _currentSearchIndex = _currentSearchIndex > 1
-            ? _currentSearchIndex - 1
-            : _searchResult!.totalInstanceCount;
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return MacosSheet(
@@ -157,53 +74,6 @@ class _FileDetailDialogState extends State<FileDetailDialog> {
       insetAnimationCurve: Curves.easeInOut,
       child: Focus(
         focusNode: _dialogFocusNode,
-        onKeyEvent: (node, event) {
-          // Only handle shortcuts when search field is not focused
-          if (_searchFocusNode.hasFocus) {
-            return KeyEventResult.ignored;
-          }
-
-          if (event is KeyDownEvent) {
-            // CMD+F to toggle search
-            if (event.logicalKey == LogicalKeyboardKey.keyF &&
-                HardwareKeyboard.instance.logicalKeysPressed
-                    .contains(LogicalKeyboardKey.meta)) {
-              _toggleSearch();
-              return KeyEventResult.handled;
-            }
-
-            // ESC to close search
-            if (event.logicalKey == LogicalKeyboardKey.escape &&
-                _isSearchVisible) {
-              _toggleSearch();
-              return KeyEventResult.handled;
-            }
-
-            // CMD+G to go to next result
-            if (event.logicalKey == LogicalKeyboardKey.keyG &&
-                HardwareKeyboard.instance.logicalKeysPressed
-                    .contains(LogicalKeyboardKey.meta) &&
-                !HardwareKeyboard.instance.logicalKeysPressed
-                    .contains(LogicalKeyboardKey.shift) &&
-                _isSearchVisible) {
-              _nextSearchResult();
-              return KeyEventResult.handled;
-            }
-
-            // CMD+Shift+G to go to previous result
-            if (event.logicalKey == LogicalKeyboardKey.keyG &&
-                HardwareKeyboard.instance.logicalKeysPressed
-                    .contains(LogicalKeyboardKey.meta) &&
-                HardwareKeyboard.instance.logicalKeysPressed
-                    .contains(LogicalKeyboardKey.shift) &&
-                _isSearchVisible) {
-              _previousSearchResult();
-              return KeyEventResult.handled;
-            }
-          }
-
-          return KeyEventResult.ignored;
-        },
         child: SizedBox(
           width: 1200,
           height: 800,
@@ -335,23 +205,11 @@ class _FileDetailDialogState extends State<FileDetailDialog> {
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: Stack(
-              children: [
-                SfPdfViewer.file(
-                  File(file.path),
-                  controller: _pdfViewerController,
-                  enableDoubleTapZooming: true,
-                  enableTextSelection: true,
-                ),
-
-                // Search overlay
-                if (_isSearchVisible)
-                  Positioned(
-                    top: 12,
-                    right: 12,
-                    child: _buildSearchOverlay(context),
-                  ),
-              ],
+            child: SfPdfViewer.file(
+              File(file.path),
+              controller: _pdfViewerController,
+              enableDoubleTapZooming: true,
+              enableTextSelection: true,
             ),
           ),
         ),
@@ -361,7 +219,7 @@ class _FileDetailDialogState extends State<FileDetailDialog> {
 
   Widget _buildDetailsPanel(BuildContext context, PdfDocument file) {
     return SizedBox(
-      width: 400,
+      width: 520,
       child: Container(
         margin: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -373,30 +231,30 @@ class _FileDetailDialogState extends State<FileDetailDialog> {
             // Invoice Information Data Grid (only if file has been processed successfully)
             if (file.hasInvoiceDetails) _buildInvoiceDataGrid(context, file),
 
-            // Items Section Header
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: MacosTheme.of(context).canvasColor,
-                borderRadius: file.vendor != null || file.invoiceDate != null
-                    ? null
-                    : const BorderRadius.vertical(top: Radius.circular(8)),
-                border: Border(
-                  bottom: BorderSide(
-                    color: MacosTheme.of(context).dividerColor,
-                    width: 0.5,
+            if (file.items.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: MacosTheme.of(context).canvasColor,
+                  borderRadius: file.vendor != null || file.invoiceDate != null
+                      ? null
+                      : const BorderRadius.vertical(top: Radius.circular(8)),
+                  border: Border(
+                    bottom: BorderSide(
+                      color: MacosTheme.of(context).dividerColor,
+                      width: 0.5,
+                    ),
                   ),
                 ),
+                child: Row(
+                  children: [
+                    Text(
+                      'Items',
+                      style: MacosTheme.of(context).typography.headline,
+                    ),
+                  ],
+                ),
               ),
-              child: Row(
-                children: [
-                  Text(
-                    'Items',
-                    style: MacosTheme.of(context).typography.headline,
-                  ),
-                ],
-              ),
-            ),
 
             // Content Area
             Expanded(child: _buildContentArea(context, file)),
@@ -472,7 +330,7 @@ class _FileDetailDialogState extends State<FileDetailDialog> {
             const MacosIcon(
               CupertinoIcons.doc_text,
               size: 48,
-              color: CupertinoColors.placeholderText,
+              color: CupertinoColors.systemGrey,
             ),
             const SizedBox(height: 16),
             Text(
@@ -580,19 +438,19 @@ class _FileDetailDialogState extends State<FileDetailDialog> {
                     ),
                     Expanded(
                       child: Text(
-                        '${item.quantity}',
+                        item.quantity.toString(),
                         style: MacosTheme.of(context).typography.body,
                       ),
                     ),
                     Expanded(
                       child: Text(
-                        '\$${item.unitPrice.toStringAsFixed(2)}',
+                        item.unitPrice.toStringAsFixed(2),
                         style: MacosTheme.of(context).typography.body,
                       ),
                     ),
                     Expanded(
                       child: Text(
-                        '\$${item.total.toStringAsFixed(2)}',
+                        item.total.toStringAsFixed(2),
                         style: MacosTheme.of(
                           context,
                         ).typography.body.copyWith(fontWeight: FontWeight.w400),
@@ -626,13 +484,13 @@ class _FileDetailDialogState extends State<FileDetailDialog> {
           const SizedBox(height: 8),
 
           // Basic Info
-          if (file.vendor != null)
+          if (file.vendor?.isNotEmpty ?? false)
             _buildDataRow(context, 'Vendor', file.vendor),
-          if (file.vendorEmail != null)
+          if (file.vendorEmail?.isNotEmpty ?? false)
             _buildDataRow(context, 'Email', file.vendorEmail),
-          if (file.vendorWebsite != null)
+          if (file.vendorWebsite?.isNotEmpty ?? false)
             _buildDataRow(context, 'Website', file.vendorWebsite),
-          if (file.vendorDisplayAddress != null)
+          if (file.vendorDisplayAddress?.isNotEmpty ?? false)
             _buildDataRow(context, 'Address', file.vendorDisplayAddress),
 
           // Dates
@@ -640,57 +498,49 @@ class _FileDetailDialogState extends State<FileDetailDialog> {
             _buildDataRow(
               context,
               'Invoice Date',
-              DateFormat('MMM d, yyyy').format(file.invoiceDate!),
-              copyValue: DateFormat('yyyy-MM-dd').format(file.invoiceDate!),
+              file.invoiceDate!.format('MMM d, yyyy'),
+              copyValue: file.invoiceDate!.format('yyyy-MM-dd'),
             ),
           if (file.dueDate != null)
             _buildDataRow(
               context,
               'Due Date',
-              DateFormat('MMM d, yyyy').format(file.dueDate!),
-              copyValue: DateFormat('yyyy-MM-dd').format(file.dueDate!),
+              file.dueDate?.format('MMM d, yyyy'),
+              copyValue: file.dueDate!.format('yyyy-MM-dd'),
             ),
 
           // Financial Details
-          if (file.currency != null)
+          if (file.currency?.isNotEmpty ?? false)
             _buildDataRow(
               context,
               'Currency',
-              file.currency,
+              file.currency!.toUpperCase(),
             ),
 
           if (file.totalAmount != null)
             _buildDataRow(
               context,
               'Total Amount',
-              '\$${file.totalAmount!.toStringAsFixed(2)}',
-              copyValue: file.totalAmount!.toStringAsFixed(2),
+              file.totalAmount!.toStringAsFixed(2),
             ),
           if (file.taxAmount != null)
             _buildDataRow(
               context,
               'Tax Amount',
-              '\$${file.taxAmount!.toStringAsFixed(2)}',
-              copyValue: file.taxAmount!.toStringAsFixed(2),
+              file.taxAmount!.toStringAsFixed(2),
             ),
           if (file.discountAmount != null)
             _buildDataRow(
               context,
               'Discount',
-              '\$${file.discountAmount!.toStringAsFixed(2)}',
-              copyValue: file.discountAmount!.toStringAsFixed(2),
+              file.discountAmount!.toStringAsFixed(2),
             ),
 
           // Payment Info
-          if (file.paymentMethod != null)
+          if (file.paymentMethod?.isNotEmpty ?? false)
             _buildDataRow(context, 'Payment Method', file.paymentMethod),
-          if (file.lastFourDigits != null)
-            _buildDataRow(
-              context,
-              'Last 4 Digits',
-              '${file.lastFourDigits}',
-              copyValue: file.lastFourDigits,
-            ),
+          if (file.lastFourDigits?.isNotEmpty ?? false)
+            _buildDataRow(context, 'Last 4 Digits', file.lastFourDigits),
         ],
       ),
     );
@@ -718,7 +568,7 @@ class _FileDetailDialogState extends State<FileDetailDialog> {
           padding: const EdgeInsets.symmetric(vertical: 6),
           decoration: BoxDecoration(borderRadius: BorderRadius.circular(4)),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               SizedBox(
@@ -732,42 +582,29 @@ class _FileDetailDialogState extends State<FileDetailDialog> {
                 ),
               ),
               Expanded(
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: value == null
-                          ? Text(
-                              "-",
-                              style: MacosTheme.of(context)
-                                  .typography
-                                  .body
-                                  .copyWith(
-                                    fontWeight: FontWeight.w400,
-                                    color: CupertinoColors.systemGrey
-                                        .withValues(alpha: .5),
-                                  ),
-                            )
-                          : Text(
-                              value,
-                              style: MacosTheme.of(context)
-                                  .typography
-                                  .body
-                                  .copyWith(fontWeight: FontWeight.w500),
+                child: value == null
+                    ? Text(
+                        "-",
+                        style: MacosTheme.of(context).typography.body.copyWith(
+                              fontWeight: FontWeight.w400,
+                              color: CupertinoColors.systemGrey
+                                  .withValues(alpha: .5),
                             ),
-                    ),
-                    if (valueToCopy != null && valueToCopy.isNotEmpty)
-                      MacosIcon(
-                        _recentlyCopiedValue == valueToCopy
-                            ? CupertinoIcons.checkmark_circle_fill
-                            : CupertinoIcons.doc_on_clipboard,
-                        size: 16,
-                        color: _recentlyCopiedValue == valueToCopy
-                            ? CupertinoColors.systemGreen
-                            : CupertinoColors.inactiveGray,
+                      )
+                    : Text(
+                        value,
+                        style: MacosTheme.of(context).typography.body.copyWith(
+                              fontWeight: FontWeight.w500,
+                            ),
                       ),
-                  ],
-                ),
               ),
+              SizedBox(width: 24),
+              if (valueToCopy != null && valueToCopy.isNotEmpty)
+                MacosIcon(
+                  CupertinoIcons.doc_on_clipboard,
+                  size: 12,
+                  color: CupertinoColors.systemGrey,
+                ),
             ],
           ),
         ),
@@ -815,146 +652,5 @@ class _FileDetailDialogState extends State<FileDetailDialog> {
     } catch (e) {
       debugPrint('Could not open file location: $e');
     }
-  }
-
-  Widget _buildSearchOverlay(BuildContext context) {
-    return Container(
-      width: 320,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: MacosTheme.of(context).canvasColor.withValues(alpha: 0.98),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: MacosTheme.of(context).dividerColor),
-        boxShadow: [
-          BoxShadow(
-            color: CupertinoColors.black.withValues(alpha: 0.15),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              const MacosIcon(CupertinoIcons.search, size: 16),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Focus(
-                  onKeyEvent: (node, event) {
-                    // Handle Enter key in search field
-                    if (event is KeyDownEvent &&
-                        event.logicalKey == LogicalKeyboardKey.enter &&
-                        _searchController.text.isNotEmpty) {
-                      _nextSearchResult();
-                      return KeyEventResult.handled;
-                    }
-                    return KeyEventResult.ignored;
-                  },
-                  child: MacosTextField(
-                    controller: _searchController,
-                    focusNode: _searchFocusNode,
-                    placeholder: 'Search in PDF... (⌘F)',
-                    onChanged: (value) {
-                      _performSearch(value);
-                    },
-                    onSubmitted: (value) {
-                      if (value.isNotEmpty) {
-                        _nextSearchResult();
-                      }
-                    },
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              MacosTooltip(
-                message: 'Close search (ESC)',
-                child: MacosIconButton(
-                  icon: const MacosIcon(CupertinoIcons.xmark, size: 16),
-                  onPressed: _toggleSearch,
-                ),
-              ),
-            ],
-          ),
-
-          if (_searchController.text.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                // Search results info
-                Expanded(
-                  child: _isSearching
-                      ? Row(
-                          children: [
-                            const SizedBox(
-                              width: 12,
-                              height: 12,
-                              child: ProgressCircle(radius: 6),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Searching...',
-                              style: MacosTheme.of(context).typography.caption1,
-                            ),
-                          ],
-                        )
-                      : _searchResult != null &&
-                              _searchResult!.totalInstanceCount > 0
-                          ? Text(
-                              '$_currentSearchIndex of ${_searchResult!.totalInstanceCount}',
-                              style: MacosTheme.of(context).typography.caption1,
-                            )
-                          : Text(
-                              'No results found',
-                              style: MacosTheme.of(context)
-                                  .typography
-                                  .caption1
-                                  .copyWith(color: CupertinoColors.systemRed),
-                            ),
-                ),
-
-                // Navigation buttons
-                const SizedBox(width: 8),
-                MacosTooltip(
-                  message: 'Previous result (⌘⇧G)',
-                  child: MacosIconButton(
-                    icon: const MacosIcon(CupertinoIcons.chevron_up, size: 14),
-                    onPressed: (_searchResult != null &&
-                            _searchResult!.totalInstanceCount > 0)
-                        ? _previousSearchResult
-                        : null,
-                  ),
-                ),
-                MacosTooltip(
-                  message: 'Next result (⌘G)',
-                  child: MacosIconButton(
-                    icon:
-                        const MacosIcon(CupertinoIcons.chevron_down, size: 14),
-                    onPressed: (_searchResult != null &&
-                            _searchResult!.totalInstanceCount > 0)
-                        ? _nextSearchResult
-                        : null,
-                  ),
-                ),
-              ],
-            ),
-          ],
-
-          // Keyboard shortcuts hint
-          if (_isSearchVisible && _searchController.text.isEmpty) ...[
-            const SizedBox(height: 8),
-            Text(
-              'Tip: ⌘G for next, ⌘⇧G for previous, ESC to close',
-              style: MacosTheme.of(context).typography.caption1.copyWith(
-                    color: CupertinoColors.secondaryLabel,
-                    fontSize: 10,
-                  ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ],
-      ),
-    );
   }
 }

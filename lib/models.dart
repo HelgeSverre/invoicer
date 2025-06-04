@@ -1,3 +1,9 @@
+import 'package:intl/intl.dart';
+
+extension DateUtils on DateTime {
+  String format(String format) => DateFormat(format).format(this);
+}
+
 class ReceiptItem {
   String? sku;
   String text;
