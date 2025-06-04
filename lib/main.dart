@@ -90,10 +90,13 @@ class _InvoicerMainScreenState extends State<InvoicerMainScreen> {
               currentIndex: sidebarIndex,
               scrollController: scrollController,
               onChanged: (i) {
-                final newView = i == 0 ? 'folders' : 'files';
-                appState.currentView.value = newView;
+                appState.currentView.value = i == 0 ? 'folders' : 'files';
               },
               items: const [
+                SidebarItem(
+                  section: true,
+                  label: Text('Documents'),
+                ),
                 SidebarItem(
                   leading: MacosIcon(CupertinoIcons.folder),
                   label: Text('Folders'),

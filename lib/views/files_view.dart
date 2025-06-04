@@ -383,20 +383,6 @@ class _FilesViewState extends State<FilesView> {
       ),
       child: Row(
         children: [
-          MacosListTile(
-            leading: const Icon(CupertinoIcons.lightbulb),
-            title: Text(
-              'A robust library of Flutter components for macOS',
-              style: MacosTheme.of(context).typography.headline,
-            ),
-            subtitle: Text(
-              'Create native looking macOS applications using Flutter',
-              style: MacosTheme.of(context).typography.subheadline.copyWith(
-                color: MacosColors.systemGrayColor,
-              ),
-            ),
-          ),
-
           Expanded(
             child: Column(
               spacing: 4,

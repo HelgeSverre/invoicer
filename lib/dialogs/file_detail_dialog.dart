@@ -74,38 +74,34 @@ class _FileDetailDialogState extends State<FileDetailDialog> {
       insetAnimationCurve: Curves.easeInOut,
       child: Focus(
         focusNode: _dialogFocusNode,
-        child: SizedBox(
-          width: 1200,
-          height: 800,
-          child: Watch((context) {
-            final file = currentFile;
-            if (file == null) {
-              return const Center(child: Text('File not found'));
-            }
+        child: Watch((context) {
+          final file = currentFile;
+          if (file == null) {
+            return const Center(child: Text('File not found'));
+          }
 
-            return Column(
-              children: [
-                // Header
-                _buildHeader(context, file),
+          return Column(
+            children: [
+              // Header
+              _buildHeader(context, file),
 
-                // Split content
-                Expanded(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Left side - PDF Preview
-                      _buildPdfPreview(context, file),
+              // Split content
+              Expanded(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Left side - PDF Preview
+                    _buildPdfPreview(context, file),
 
-                      // Right side - Details
-                      _buildDetailsPanel(context, file),
-                    ],
-                  ),
+                    // Right side - Details
+                    _buildDetailsPanel(context, file),
+                  ],
                 ),
-              ],
-            );
-          }),
-        ),
+              ),
+            ],
+          );
+        }),
       ),
     );
   }
@@ -230,31 +226,35 @@ class _FileDetailDialogState extends State<FileDetailDialog> {
           children: [
             // Invoice Information Data Grid (only if file has been processed successfully)
             if (file.hasInvoiceDetails) _buildInvoiceDataGrid(context, file),
-
-            if (file.items.isNotEmpty)
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: MacosTheme.of(context).canvasColor,
-                  borderRadius: file.vendor != null || file.invoiceDate != null
-                      ? null
-                      : const BorderRadius.vertical(top: Radius.circular(8)),
-                  border: Border(
-                    bottom: BorderSide(
-                      color: MacosTheme.of(context).dividerColor,
-                      width: 0.5,
-                    ),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Text(
-                      'Items',
-                      style: MacosTheme.of(context).typography.headline,
-                    ),
-                  ],
-                ),
-              ),
+            //
+            // if (file.items.isNotEmpty)
+            //   Container(
+            //     padding: const EdgeInsets.all(16),
+            //     decoration: BoxDecoration(
+            //       color: MacosTheme.of(context).canvasColor,
+            //       borderRadius: file.vendor != null || file.invoiceDate != null
+            //           ? null
+            //           : const BorderRadius.vertical(top: Radius.circular(8)),
+            //       border: Border(
+            //         top: BorderSide(
+            //           color: MacosTheme.of(context).dividerColor,
+            //           width: 0.5,
+            //         ),
+            //         bottom: BorderSide(
+            //           color: MacosTheme.of(context).dividerColor,
+            //           width: 0.5,
+            //         ),
+            //       ),
+            //     ),
+            //     child: Row(
+            //       children: [
+            //         Text(
+            //           'Items',
+            //           style: MacosTheme.of(context).typography.headline,
+            //         ),
+            //       ],
+            //     ),
+            //   ),
 
             // Content Area
             Expanded(child: _buildContentArea(context, file)),
@@ -353,10 +353,17 @@ class _FileDetailDialogState extends State<FileDetailDialog> {
       children: [
         // Table header
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 8,
+          ),
           decoration: BoxDecoration(
-            color: MacosTheme.of(context).canvasColor.withValues(alpha: 0.5),
+            color: MacosTheme.of(context).canvasColor,
             border: Border(
+              top: BorderSide(
+                color: MacosTheme.of(context).dividerColor,
+                width: 0.5,
+              ),
               bottom: BorderSide(
                 color: MacosTheme.of(context).dividerColor,
                 width: 0.5,
@@ -517,19 +524,19 @@ class _FileDetailDialogState extends State<FileDetailDialog> {
               file.currency!.toUpperCase(),
             ),
 
-          if (file.totalAmount != null)
+          if (file.totalAmount != null && file.totalAmount != 0)
             _buildDataRow(
               context,
               'Total Amount',
               file.totalAmount!.toStringAsFixed(2),
             ),
-          if (file.taxAmount != null)
+          if (file.taxAmount != null && file.taxAmount != 0)
             _buildDataRow(
               context,
               'Tax Amount',
               file.taxAmount!.toStringAsFixed(2),
             ),
-          if (file.discountAmount != null)
+          if (file.discountAmount != null && file.discountAmount != 0)
             _buildDataRow(
               context,
               'Discount',
