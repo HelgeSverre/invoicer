@@ -533,8 +533,8 @@ class _FileDetailDialogState extends State<FileDetailDialog> {
     return MacosTooltip(
       message: valueToCopy != '-'
           ? (_recentlyCopiedValue == valueToCopy
-              ? 'Copied!'
-              : 'Click to copy: $valueToCopy')
+                ? 'Copied!'
+                : 'Click to copy: $valueToCopy')
           : '',
       child: GestureDetector(
         onTap: valueToCopy != null && valueToCopy.isNotEmpty
@@ -552,9 +552,9 @@ class _FileDetailDialogState extends State<FileDetailDialog> {
                 child: Text(
                   '$label:',
                   style: MacosTheme.of(context).typography.body.copyWith(
-                        fontWeight: FontWeight.w400,
-                        color: CupertinoColors.systemGrey,
-                      ),
+                    fontWeight: FontWeight.w400,
+                    color: CupertinoColors.systemGrey,
+                  ),
                 ),
               ),
               Expanded(
@@ -564,9 +564,7 @@ class _FileDetailDialogState extends State<FileDetailDialog> {
                       child: value == null
                           ? Text(
                               "-",
-                              style: MacosTheme.of(context)
-                                  .typography
-                                  .body
+                              style: MacosTheme.of(context).typography.body
                                   .copyWith(
                                     fontWeight: FontWeight.w400,
                                     color: CupertinoColors.systemGrey
@@ -575,9 +573,7 @@ class _FileDetailDialogState extends State<FileDetailDialog> {
                             )
                           : Text(
                               value,
-                              style: MacosTheme.of(context)
-                                  .typography
-                                  .body
+                              style: MacosTheme.of(context).typography.body
                                   .copyWith(fontWeight: FontWeight.w500),
                             ),
                     ),

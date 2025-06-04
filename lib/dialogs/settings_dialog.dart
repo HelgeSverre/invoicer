@@ -38,10 +38,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
             children: [
               const MacosIcon(CupertinoIcons.settings, size: 20),
               const SizedBox(width: 8),
-              Text(
-                'Settings',
-                style: MacosTheme.of(context).typography.title2,
-              ),
+              Text('Settings', style: MacosTheme.of(context).typography.title2),
               const Spacer(),
               MacosTooltip(
                 message: 'Close',

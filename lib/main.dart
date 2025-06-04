@@ -6,7 +6,6 @@ import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/intl.dart';
 import 'package:invoicer/dialogs/file_detail_dialog.dart';
-import 'package:invoicer/dialogs/settings_dialog.dart';
 import 'package:invoicer/models.dart';
 import 'package:invoicer/state.dart';
 import 'package:macos_ui/macos_ui.dart';
@@ -71,14 +70,6 @@ class _InvoicerMainScreenState extends State<InvoicerMainScreen> {
     }
   }
 
-  void _showSettings() {
-    showMacosSheet(
-      context: context,
-      barrierDismissible: true,
-      builder: (context) => SettingsDialog(appState: appState),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return MacosWindow(
@@ -123,29 +114,28 @@ class _InvoicerMainScreenState extends State<InvoicerMainScreen> {
                 showLabel: true,
                 tooltipMessage: 'Select a folder containing PDF receipts',
               )
-            else
-              ...[
+            else ...[
+              ToolBarIconButton(
+                label: 'Change Folder',
+                icon: const MacosIcon(CupertinoIcons.folder_badge_plus),
+                onPressed: appState.selectFolder,
+                showLabel: false,
+                tooltipMessage: 'Select a different folder',
+              ),
+              if (hasFiles) ...[
                 ToolBarIconButton(
-                  label: 'Change Folder',
-                  icon: const MacosIcon(CupertinoIcons.folder_badge_plus),
-                  onPressed: appState.selectFolder,
+                  label: 'Process All',
+                  icon: isProcessing
+                      ? const MacosIcon(CupertinoIcons.clock)
+                      : const MacosIcon(CupertinoIcons.play_fill),
+                  onPressed: isProcessing ? null : appState.processAllFiles,
                   showLabel: false,
-                  tooltipMessage: 'Select a different folder',
+                  tooltipMessage: isProcessing
+                      ? 'Processing all files...'
+                      : 'Process all PDF files',
                 ),
-                if (hasFiles) ...[
-                  ToolBarIconButton(
-                    label: 'Process All',
-                    icon: isProcessing
-                        ? const MacosIcon(CupertinoIcons.clock)
-                        : const MacosIcon(CupertinoIcons.play_fill),
-                    onPressed: isProcessing ? null : appState.processAllFiles,
-                    showLabel: false,
-                    tooltipMessage: isProcessing
-                        ? 'Processing all files...'
-                        : 'Process all PDF files',
-                  ),
-                ],
               ],
+            ],
             // const ToolBarSpacer(),
             // ToolBarIconButton(
             //   label: 'Settings',
@@ -173,18 +163,12 @@ class _InvoicerMainScreenState extends State<InvoicerMainScreen> {
                         const SizedBox(height: 24),
                         Text(
                           'Select a Folder',
-                          style: MacosTheme
-                              .of(context)
-                              .typography
-                              .title1,
+                          style: MacosTheme.of(context).typography.title1,
                         ),
                         const SizedBox(height: 8),
                         Text(
                           'Choose a folder containing PDF receipts to get started',
-                          style: MacosTheme
-                              .of(context)
-                              .typography
-                              .body,
+                          style: MacosTheme.of(context).typography.body,
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 24),
@@ -218,18 +202,12 @@ class _InvoicerMainScreenState extends State<InvoicerMainScreen> {
                         const SizedBox(height: 16),
                         Text(
                           'No PDF Files Found',
-                          style: MacosTheme
-                              .of(context)
-                              .typography
-                              .title1,
+                          style: MacosTheme.of(context).typography.title1,
                         ),
                         const SizedBox(height: 8),
                         Text(
                           'The selected folder doesn\'t contain any PDF files',
-                          style: MacosTheme
-                              .of(context)
-                              .typography
-                              .body,
+                          style: MacosTheme.of(context).typography.body,
                         ),
                       ],
                     ),
@@ -248,14 +226,10 @@ class _InvoicerMainScreenState extends State<InvoicerMainScreen> {
                           vertical: 8,
                         ),
                         decoration: BoxDecoration(
-                          color: MacosTheme
-                              .of(context)
-                              .canvasColor,
+                          color: MacosTheme.of(context).canvasColor,
                           border: Border(
                             bottom: BorderSide(
-                              color: MacosTheme
-                                  .of(context)
-                                  .dividerColor,
+                              color: MacosTheme.of(context).dividerColor,
                               width: 0.5,
                             ),
                           ),
@@ -267,8 +241,7 @@ class _InvoicerMainScreenState extends State<InvoicerMainScreen> {
                               flex: 4,
                               child: Text(
                                 'File Name',
-                                style: MacosTheme
-                                    .of(context)
+                                style: MacosTheme.of(context)
                                     .typography
                                     .headline
                                     .copyWith(fontWeight: FontWeight.w600),
@@ -278,8 +251,7 @@ class _InvoicerMainScreenState extends State<InvoicerMainScreen> {
                               flex: 2,
                               child: Text(
                                 'Vendor',
-                                style: MacosTheme
-                                    .of(context)
+                                style: MacosTheme.of(context)
                                     .typography
                                     .headline
                                     .copyWith(fontWeight: FontWeight.w600),
@@ -289,8 +261,7 @@ class _InvoicerMainScreenState extends State<InvoicerMainScreen> {
                               flex: 2,
                               child: Text(
                                 'Date',
-                                style: MacosTheme
-                                    .of(context)
+                                style: MacosTheme.of(context)
                                     .typography
                                     .headline
                                     .copyWith(fontWeight: FontWeight.w600),
@@ -299,8 +270,7 @@ class _InvoicerMainScreenState extends State<InvoicerMainScreen> {
                             Expanded(
                               child: Text(
                                 'Items',
-                                style: MacosTheme
-                                    .of(context)
+                                style: MacosTheme.of(context)
                                     .typography
                                     .headline
                                     .copyWith(fontWeight: FontWeight.w600),
@@ -311,10 +281,9 @@ class _InvoicerMainScreenState extends State<InvoicerMainScreen> {
                         ),
                       ),
                       // Table Rows
-                      ...appState.pdfFiles
-                          .asMap()
-                          .entries
-                          .map((MapEntry<int, PdfDocument> entry,) {
+                      ...appState.pdfFiles.asMap().entries.map((
+                        MapEntry<int, PdfDocument> entry,
+                      ) {
                         return GestureDetector(
                           onTap: () => _showFileDetails(entry.value),
                           behavior: HitTestBehavior.opaque,
@@ -325,20 +294,13 @@ class _InvoicerMainScreenState extends State<InvoicerMainScreen> {
                             ),
                             decoration: BoxDecoration(
                               color: entry.key % 2 == 0
-                                  ? MacosTheme
-                                  .of(context)
-                                  .canvasColor
-                                  : MacosTheme
-                                  .of(
-                                context,
-                              )
-                                  .canvasColor
-                                  .withValues(alpha: 0.5),
+                                  ? MacosTheme.of(context).canvasColor
+                                  : MacosTheme.of(
+                                      context,
+                                    ).canvasColor.withValues(alpha: 0.5),
                               border: Border(
                                 bottom: BorderSide(
-                                  color: MacosTheme
-                                      .of(context)
-                                      .dividerColor,
+                                  color: MacosTheme.of(context).dividerColor,
                                   width: 0.5,
                                 ),
                               ),
@@ -365,23 +327,20 @@ class _InvoicerMainScreenState extends State<InvoicerMainScreen> {
                                   flex: 4,
                                   child: Text(
                                     entry.value.name,
-                                    style: MacosTheme
-                                        .of(context)
+                                    style: MacosTheme.of(context)
                                         .typography
                                         .body
                                         .copyWith(
-                                      color: entry.value.items.isNotEmpty
-                                          ? MacosTheme
-                                          .of(
-                                        context,
-                                      )
-                                          .primaryColor
-                                          : null,
-                                      decoration:
-                                      entry.value.items.isNotEmpty
-                                          ? TextDecoration.underline
-                                          : null,
-                                    ),
+                                          color: entry.value.items.isNotEmpty
+                                              ? MacosTheme.of(
+                                                  context,
+                                                ).primaryColor
+                                              : null,
+                                          decoration:
+                                              entry.value.items.isNotEmpty
+                                              ? TextDecoration.underline
+                                              : null,
+                                        ),
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
@@ -395,15 +354,14 @@ class _InvoicerMainScreenState extends State<InvoicerMainScreen> {
                                             : entry.value.isProcessing
                                             ? 'Processing...'
                                             : '-'),
-                                    style: MacosTheme
-                                        .of(context)
+                                    style: MacosTheme.of(context)
                                         .typography
                                         .body
                                         .copyWith(
-                                      color: entry.value.error != null
-                                          ? CupertinoColors.systemRed
-                                          : null,
-                                    ),
+                                          color: entry.value.error != null
+                                              ? CupertinoColors.systemRed
+                                              : null,
+                                        ),
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
@@ -413,15 +371,12 @@ class _InvoicerMainScreenState extends State<InvoicerMainScreen> {
                                   child: Text(
                                     entry.value.invoiceDate != null
                                         ? DateFormat(
-                                      'MMM dd, yyyy',
-                                    ).format(entry.value.invoiceDate!)
+                                            'MMM dd, yyyy',
+                                          ).format(entry.value.invoiceDate!)
                                         : '-',
-                                    style: MacosTheme
-                                        .of(
+                                    style: MacosTheme.of(
                                       context,
-                                    )
-                                        .typography
-                                        .body,
+                                    ).typography.body,
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
@@ -431,12 +386,9 @@ class _InvoicerMainScreenState extends State<InvoicerMainScreen> {
                                     entry.value.items.isNotEmpty
                                         ? '${entry.value.items.length}'
                                         : '-',
-                                    style: MacosTheme
-                                        .of(
+                                    style: MacosTheme.of(
                                       context,
-                                    )
-                                        .typography
-                                        .body,
+                                    ).typography.body,
                                   ),
                                 ),
                                 // Actions
@@ -455,54 +407,47 @@ class _InvoicerMainScreenState extends State<InvoicerMainScreen> {
                                               CupertinoIcons.wand_stars,
                                               size: 16,
                                             ),
-                                            onPressed: () =>
-                                                appState
-                                                    .processFile(entry.value),
+                                            onPressed: () => appState
+                                                .processFile(entry.value),
                                           ),
                                         )
-                                      else
-                                        if (entry.value.isProcessing)
-                                          MacosTooltip(
-                                            message: 'Processing in progress...',
-                                            child: const SizedBox(
-                                              width: 16,
-                                              height: 16,
-                                              child: ProgressCircle(radius: 8),
+                                      else if (entry.value.isProcessing)
+                                        MacosTooltip(
+                                          message: 'Processing in progress...',
+                                          child: const SizedBox(
+                                            width: 16,
+                                            height: 16,
+                                            child: ProgressCircle(radius: 8),
+                                          ),
+                                        )
+                                      else if (entry.value.error != null)
+                                        MacosTooltip(
+                                          message: 'Retry processing this file',
+                                          child: MacosIconButton(
+                                            icon: const MacosIcon(
+                                              CupertinoIcons.wand_stars,
+                                              size: 16,
                                             ),
-                                          )
-                                        else
-                                          if (entry.value.error != null)
-                                            MacosTooltip(
-                                              message: 'Retry processing this file',
-                                              child: MacosIconButton(
-                                                icon: const MacosIcon(
-                                                  CupertinoIcons.wand_stars,
-                                                  size: 16,
+                                            onPressed: () => appState
+                                                .processFile(entry.value),
+                                          ),
+                                        )
+                                      else if (entry.value.vendor != null)
+                                        MacosTooltip(
+                                          message:
+                                              'Rename file based on extracted data',
+                                          child: MacosIconButton(
+                                            icon: const MacosIcon(
+                                              CupertinoIcons.square_arrow_up,
+                                              size: 16,
+                                            ),
+                                            onPressed: () =>
+                                                appState.renameFile(
+                                                  entry.value,
+                                                  context,
                                                 ),
-                                                onPressed: () =>
-                                                    appState
-                                                        .processFile(entry
-                                                        .value),
-                                              ),
-                                            )
-                                          else
-                                            if (entry.value.vendor != null)
-                                              MacosTooltip(
-                                                message:
-                                                'Rename file based on extracted data',
-                                                child: MacosIconButton(
-                                                  icon: const MacosIcon(
-                                                    CupertinoIcons
-                                                        .square_arrow_up,
-                                                    size: 16,
-                                                  ),
-                                                  onPressed: () =>
-                                                      appState.renameFile(
-                                                        entry.value,
-                                                        context,
-                                                      ),
-                                                ),
-                                              ),
+                                          ),
+                                        ),
                                     ],
                                   ),
                                 ),
