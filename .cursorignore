@@ -1,0 +1,9 @@
+# Add directories or file patterns to ignore during indexing (e.g. foo/ or *.csv)
+.idea/
+.dart_tool/
+.fvm/
+windows/
+linux/
+android/
+linux/
+test/

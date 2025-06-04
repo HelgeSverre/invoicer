@@ -1,0 +1,41 @@
+name: invoicer
+description: A Flutter desktop app for processing invoices and receipts with OpenAI
+
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.5.3 <4.0.0"
+  flutter: ">=1.20.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Core functionality
+  signals: ^6.0.2
+  file_picker: ^10.1.9
+  http: ^1.1.0
+  shared_preferences: ^2.5.3
+  syncfusion_flutter_pdf: ^29.2.8
+  syncfusion_flutter_pdfviewer: ^29.2.8
+  path: ^1.8.3
+  intl: ^0.20.2
+  flutter_dotenv: ^5.2.1
+  macos_ui: ^2.1.10
+  macos_window_utils: ^1.8.1
+  cupertino_icons: ^1.0.8
+  url_launcher: ^6.3.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: false
+
+
+  assets:
+    - .env
