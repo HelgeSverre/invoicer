@@ -93,10 +93,7 @@ class _InvoicerMainScreenState extends State<InvoicerMainScreen> {
                 appState.currentView.value = i == 0 ? 'folders' : 'files';
               },
               items: const [
-                SidebarItem(
-                  section: true,
-                  label: Text('Documents'),
-                ),
+                SidebarItem(section: true, label: Text('Documents')),
                 SidebarItem(
                   leading: MacosIcon(CupertinoIcons.folder),
                   label: Text('Folders'),

@@ -52,7 +52,8 @@ class Extractor {
       'messages': [
         {
           'role': 'user',
-          'content': "Extract comprehensive invoice data from the following document content. "
+          'content':
+              "Extract comprehensive invoice data from the following document content. "
               "Please extract all available information including vendor details, "
               "financial amounts, dates, line items, and payment information. "
               "\n\nDocument content:"

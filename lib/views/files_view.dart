@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:invoicer/dialogs/file_detail_dialog.dart';
 import 'package:invoicer/models.dart';
@@ -30,51 +31,33 @@ class _FilesViewState extends State<FilesView> {
         return _buildNoFilesState(context, currentFolder);
       }
 
-      return DragTarget<List<String>>(
-        onAcceptWithDetails: (files) {
-          _handleDroppedFiles(files.data);
-        },
-        builder: (context, candidateData, rejectedData) {
-          return Container(
-            decoration: candidateData.isNotEmpty
-                ? BoxDecoration(
-                    border: Border.all(
-                      color: MacosTheme.of(context).primaryColor,
-                      width: 2,
-                    ),
-                    borderRadius: BorderRadius.circular(8),
-                  )
-                : null,
-            child: SingleChildScrollView(
-              physics: const ClampingScrollPhysics(),
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Current folder info (if applicable)
-                  if (currentFolder != null) ...[
-                    _buildCurrentFolderInfo(context, currentFolder),
-                    const SizedBox(height: 16),
-                  ],
+      return SingleChildScrollView(
+        physics: const ClampingScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Current folder info (if applicable)
+            if (currentFolder != null) ...[
+              _buildCurrentFolderInfo(context, currentFolder),
+              const SizedBox(height: 16),
+            ],
 
-                  // Add files section
-                  _buildAddFilesSection(context),
-                  const SizedBox(height: 16),
+            // Add files section
+            _buildAddFilesSection(context),
+            const SizedBox(height: 16),
 
-                  // Table Header
-                  _buildTableHeader(context),
+            // Table Header
+            _buildTableHeader(context),
 
-                  // Table Rows
-                  ...allFiles.asMap().entries.map((
-                    MapEntry<int, PdfDocument> entry,
-                  ) {
-                    return _buildFileRow(context, entry.key, entry.value);
-                  }),
-                ],
-              ),
-            ),
-          );
-        },
+            // Table Rows
+            ...allFiles.asMap().entries.map((
+              MapEntry<int, PdfDocument> entry,
+            ) {
+              return _buildFileRow(context, entry.key, entry.value);
+            }),
+          ],
+        ),
       );
     });
   }
@@ -85,10 +68,7 @@ class _FilesViewState extends State<FilesView> {
       behavior: HitTestBehavior.opaque,
       child: Container(
         height: 42,
-        padding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 10,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           color: index % 2 == 0
               ? MacosTheme.of(context).canvasColor
@@ -173,6 +153,7 @@ class _FilesViewState extends State<FilesView> {
                     MacosTooltip(
                       message: 'Process this file with AI',
                       child: MacosIconButton(
+                        padding: EdgeInsets.zero,
                         icon: const MacosIcon(
                           CupertinoIcons.wand_stars,
                           size: 16,
@@ -193,6 +174,7 @@ class _FilesViewState extends State<FilesView> {
                     MacosTooltip(
                       message: 'Retry processing this file',
                       child: MacosIconButton(
+                        padding: EdgeInsets.zero,
                         icon: const MacosIcon(
                           CupertinoIcons.wand_stars,
                           size: 16,
@@ -201,17 +183,11 @@ class _FilesViewState extends State<FilesView> {
                       ),
                     )
                   else if (file.vendor != null)
-                    MacosTooltip(
-                      message: 'Rename file based on extracted data',
-                      child: MacosIconButton(
-                        icon: const MacosIcon(
-                          CupertinoIcons.square_arrow_up,
-                          size: 16,
+                        MacosIconButton(
+                          padding: EdgeInsets.zero,
+                          icon: const MacosIcon(CupertinoIcons.square_arrow_up, size: 16),
+                          onPressed: () => widget.appState.renameFile(file, context),
                         ),
-                        onPressed: () =>
-                            widget.appState.renameFile(file, context),
-                      ),
-                    ),
                 ],
               ),
             ),
@@ -281,7 +257,7 @@ class _FilesViewState extends State<FilesView> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Add PDF files by selecting a folder or dropping files here',
+            'Add PDF files by selecting a folder or individual files',
             style: MacosTheme.of(context).typography.body,
             textAlign: TextAlign.center,
           ),
@@ -348,7 +324,7 @@ class _FilesViewState extends State<FilesView> {
             )
           else
             Text(
-              'Drop PDF files here or use the Add Files button',
+              'Use the Add Files button to select PDF files',
               style: MacosTheme.of(context).typography.body,
               textAlign: TextAlign.center,
             ),
@@ -422,7 +398,7 @@ class _FilesViewState extends State<FilesView> {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Drop PDF files here or click Add Files',
+              'Click Add Files to select PDF files',
               style: MacosTheme.of(context).typography.body,
             ),
           ),
@@ -466,13 +442,5 @@ class _FilesViewState extends State<FilesView> {
         ],
       ),
     );
-  }
-
-  void _handleDroppedFiles(List<String> files) {
-    for (String filePath in files) {
-      if (filePath.toLowerCase().endsWith('.pdf')) {
-        widget.appState.addIndividualFile(filePath);
-      }
-    }
   }
 }

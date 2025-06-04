@@ -1,5 +1,4 @@
 import 'package:flutter/cupertino.dart';
-import 'package:intl/intl.dart';
 import 'package:invoicer/models.dart';
 import 'package:invoicer/state.dart';
 import 'package:macos_ui/macos_ui.dart';
@@ -26,7 +25,7 @@ class _FoldersViewState extends State<FoldersView> {
               const MacosIcon(
                 CupertinoIcons.folder_badge_plus,
                 size: 80,
-                color: CupertinoColors.placeholderText,
+                color: CupertinoColors.systemGrey,
               ),
               const SizedBox(height: 24),
               Text(
@@ -126,13 +125,13 @@ class _FoldersViewState extends State<FoldersView> {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: isSelected
-              ? MacosTheme.of(context).primaryColor.withOpacity(0.1)
+              ? MacosTheme.of(context).primaryColor.withOpacity(0.08)
               : MacosTheme.of(context).canvasColor,
           border: Border.all(
             color: isSelected
                 ? MacosTheme.of(context).primaryColor
-                : MacosTheme.of(context).dividerColor,
-            width: isSelected ? 2 : 1,
+                : MacosTheme.of(context).dividerColor.withOpacity(0.5),
+            width: isSelected ? 1.5 : 0.5,
           ),
           borderRadius: BorderRadius.circular(8),
         ),
@@ -146,16 +145,13 @@ class _FoldersViewState extends State<FoldersView> {
                   size: 20,
                   color: isSelected
                       ? MacosTheme.of(context).primaryColor
-                      : CupertinoColors.systemBlue,
+                      : CupertinoColors.systemGrey,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     folder.name,
                     style: MacosTheme.of(context).typography.headline.copyWith(
-                      color: isSelected
-                          ? MacosTheme.of(context).primaryColor
-                          : null,
                       fontWeight: isSelected
                           ? FontWeight.w600
                           : FontWeight.w500,
@@ -190,7 +186,7 @@ class _FoldersViewState extends State<FoldersView> {
                 ),
                 const Spacer(),
                 Text(
-                  DateFormat('MMM d, yyyy').format(folder.addedAt),
+                  folder.addedAt.format('MMM d, yyyy'),
                   style: MacosTheme.of(context).typography.caption1.copyWith(
                     color: CupertinoColors.secondaryLabel,
                   ),

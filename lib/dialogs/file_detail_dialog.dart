@@ -353,10 +353,7 @@ class _FileDetailDialogState extends State<FileDetailDialog> {
       children: [
         // Table header
         Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 8,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
             color: MacosTheme.of(context).canvasColor,
             border: Border(
@@ -518,11 +515,7 @@ class _FileDetailDialogState extends State<FileDetailDialog> {
 
           // Financial Details
           if (file.currency?.isNotEmpty ?? false)
-            _buildDataRow(
-              context,
-              'Currency',
-              file.currency!.toUpperCase(),
-            ),
+            _buildDataRow(context, 'Currency', file.currency!.toUpperCase()),
 
           if (file.totalAmount != null && file.totalAmount != 0)
             _buildDataRow(
@@ -594,15 +587,16 @@ class _FileDetailDialogState extends State<FileDetailDialog> {
                         "-",
                         style: MacosTheme.of(context).typography.body.copyWith(
                               fontWeight: FontWeight.w400,
-                              color: CupertinoColors.systemGrey
-                                  .withValues(alpha: .5),
+                              color: CupertinoColors.systemGrey.withValues(
+                                alpha: .5,
+                              ),
                             ),
                       )
                     : Text(
                         value,
-                        style: MacosTheme.of(context).typography.body.copyWith(
-                              fontWeight: FontWeight.w500,
-                            ),
+                        style: MacosTheme.of(
+                          context,
+                        ).typography.body.copyWith(fontWeight: FontWeight.w500),
                       ),
               ),
               SizedBox(width: 24),
