@@ -40,20 +40,19 @@ class Extractor {
 
   static Future<Map<String, dynamic>> extractReceiptData(
     String pdfText,
-    String apiKey,
-  ) async {
+    String apiKey, {
+    String model = "gpt-4.1-mini",
+  }) async {
     if (apiKey.isEmpty) {
       throw Exception('OpenAI API key not set');
     }
 
     var prompt = {
-      // 'model': 'gpt-4o-mini',
-      'model': 'gpt-4.1-nano',
+      'model': model,
       'messages': [
         {
           'role': 'user',
-          'content':
-              "Extract comprehensive invoice data from the following document content. "
+          'content': "Extract comprehensive invoice data from the following document content. "
               "Please extract all available information including vendor details, "
               "financial amounts, dates, line items, and payment information. "
               "\n\nDocument content:"
