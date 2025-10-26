@@ -34,6 +34,7 @@ class AppState {
     [],
   ); // Files added individually
   final apiKey = signal<String>("");
+  final aiModel = signal<String>("gpt-4.1-mini");
   final promptTemplate = signal<String>(
     'Additional instructions for AI processing (currently unused - extraction is guided by function definitions)',
   );
@@ -47,6 +48,12 @@ class AppState {
           fallback: prefs.getString('openai_api_key'),
         ) ??
         "";
+    aiModel.value =
+        dotenv.maybeGet(
+          'OPENAI_MODEL',
+          fallback: prefs.getString('openai_model'),
+        ) ??
+        "gpt-4.1-mini";
     promptTemplate.value =
         prefs.getString('prompt_template') ?? promptTemplate.value;
 
@@ -107,6 +114,7 @@ class AppState {
   Future<void> saveSettings() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('openai_api_key', apiKey.value);
+    await prefs.setString('openai_model', aiModel.value);
     await prefs.setString('prompt_template', promptTemplate.value);
 
     // Save legacy folder for backwards compatibility
@@ -294,6 +302,7 @@ class AppState {
       final result = await Extractor.extractReceiptData(
         textContent,
         apiKey.value,
+        model: aiModel.value,
       );
 
       final updatedFile = file.copyWith(

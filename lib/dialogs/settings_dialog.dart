@@ -14,7 +14,14 @@ class SettingsDialog extends StatefulWidget {
 
 class _SettingsDialogState extends State<SettingsDialog> {
   late TextEditingController _apiKeyController;
-  late TextEditingController _promptController;
+  late String _selectedModel;
+  bool _obscureApiKey = true;
+
+  final List<String> _availableModels = [
+    'gpt-4.1',
+    'gpt-4.1-mini',
+    'gpt-4.1-nano',
+  ];
 
   @override
   void initState() {
@@ -22,16 +29,14 @@ class _SettingsDialogState extends State<SettingsDialog> {
     _apiKeyController = TextEditingController(
       text: widget.appState.apiKey.value,
     );
-    _promptController = TextEditingController(
-      text: widget.appState.promptTemplate.value,
-    );
+    _selectedModel = widget.appState.aiModel.value;
   }
 
   @override
   Widget build(BuildContext context) {
     return MacosSheet(
       child: Container(
-        padding: EdgeInsets.all(12),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -52,37 +57,81 @@ class _SettingsDialogState extends State<SettingsDialog> {
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
 
             // API Key Section
             Text(
               'OpenAI API Key',
               style: MacosTheme.of(context).typography.headline,
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Watch(
               (context) => MacosTextField(
                 controller: _apiKeyController,
                 placeholder: 'sk-...',
-                obscureText: true,
+                obscureText: _obscureApiKey,
                 prefix: MacosTooltip(
                   message: 'Your OpenAI API key for processing receipts',
                   child: const MacosIcon(CupertinoIcons.lock),
                 ),
+                suffix: MacosIconButton(
+                  icon: MacosIcon(
+                    _obscureApiKey
+                        ? CupertinoIcons.eye
+                        : CupertinoIcons.eye_slash,
+                    size: 18,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _obscureApiKey = !_obscureApiKey;
+                    });
+                  },
+                ),
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
 
-            // TODO: AI model selector
-
-            Placeholder(
-              fallbackHeight: 50,
+            // Divider
+            Container(
+              height: 1,
               color: MacosTheme.of(context).dividerColor,
-              strokeWidth: 1,
+            ),
+            const SizedBox(height: 24),
+
+            // AI Model Section
+            Text(
+              'AI Model',
+              style: MacosTheme.of(context).typography.headline,
+            ),
+            const SizedBox(height: 8),
+            MacosPopupButton<String>(
+              value: _selectedModel,
+              onChanged: (String? newValue) {
+                if (newValue != null) {
+                  setState(() {
+                    _selectedModel = newValue;
+                  });
+                }
+              },
+              items: _availableModels
+                  .map<MacosPopupMenuItem<String>>(
+                    (String value) => MacosPopupMenuItem<String>(
+                      value: value,
+                      child: Text(value),
+                    ),
+                  )
+                  .toList(),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Recommended: gpt-4.1-mini (fast, lower cost). gpt-4.1 (best quality). nano (smallest; may miss details).',
+              style: MacosTheme.of(context).typography.caption1.copyWith(
+                    color: CupertinoColors.systemGrey,
+                  ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
 
             // Action Buttons
             Row(
@@ -99,8 +148,7 @@ class _SettingsDialogState extends State<SettingsDialog> {
                   controlSize: ControlSize.large,
                   onPressed: () {
                     widget.appState.apiKey.value = _apiKeyController.text;
-                    widget.appState.promptTemplate.value =
-                        _promptController.text;
+                    widget.appState.aiModel.value = _selectedModel;
                     widget.appState.saveSettings();
                     Navigator.of(context).pop();
                   },
@@ -117,7 +165,6 @@ class _SettingsDialogState extends State<SettingsDialog> {
   @override
   void dispose() {
     _apiKeyController.dispose();
-    _promptController.dispose();
     super.dispose();
   }
 }
