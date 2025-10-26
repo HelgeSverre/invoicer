@@ -24,6 +24,7 @@ analyze:
 
 # Install dependencies
 install:
+    fvm install
     fvm flutter pub get
 
 # Update dependencies
