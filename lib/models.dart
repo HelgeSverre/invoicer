@@ -27,6 +27,15 @@ class ReceiptItem {
       quantity: json['quantity'] ?? 1,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'sku': sku,
+      'text': text,
+      'unit_price': unitPrice,
+      'quantity': quantity,
+    };
+  }
 }
 
 class ProjectFolder {
@@ -177,6 +186,57 @@ class PdfDocument {
       paymentMethod: paymentMethod ?? this.paymentMethod,
       lastFourDigits: lastFourDigits ?? this.lastFourDigits,
       error: error ?? this.error,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'path': path,
+      'items': items.map((item) => item.toJson()).toList(),
+      'vendor': vendor,
+      'source': source,
+      'folderPath': folderPath,
+      'invoiceDate': invoiceDate?.toIso8601String(),
+      'dueDate': dueDate?.toIso8601String(),
+      'currency': currency,
+      'taxAmount': taxAmount,
+      'totalAmount': totalAmount,
+      'discountAmount': discountAmount,
+      'vendorWebsite': vendorWebsite,
+      'vendorEmail': vendorEmail,
+      'vendorDisplayAddress': vendorDisplayAddress,
+      'paymentMethod': paymentMethod,
+      'lastFourDigits': lastFourDigits,
+      // Note: Don't serialize isProcessing, error - these are runtime state
+    };
+  }
+
+  factory PdfDocument.fromJson(Map<String, dynamic> json) {
+    return PdfDocument(
+      name: json['name'] ?? '',
+      path: json['path'] ?? '',
+      items: (json['items'] as List<dynamic>?)
+              ?.map((item) => ReceiptItem.fromJson(item as Map<String, dynamic>))
+              .toList() ??
+          [],
+      vendor: json['vendor'],
+      source: json['source'] ?? 'folder',
+      folderPath: json['folderPath'],
+      invoiceDate: json['invoiceDate'] != null
+          ? DateTime.tryParse(json['invoiceDate'])
+          : null,
+      dueDate:
+          json['dueDate'] != null ? DateTime.tryParse(json['dueDate']) : null,
+      currency: json['currency'],
+      taxAmount: json['taxAmount']?.toDouble(),
+      totalAmount: json['totalAmount']?.toDouble(),
+      discountAmount: json['discountAmount']?.toDouble(),
+      vendorWebsite: json['vendorWebsite'],
+      vendorEmail: json['vendorEmail'],
+      vendorDisplayAddress: json['vendorDisplayAddress'],
+      paymentMethod: json['paymentMethod'],
+      lastFourDigits: json['lastFourDigits'],
     );
   }
 }
