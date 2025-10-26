@@ -100,7 +100,7 @@ class _FoldersViewState extends State<FoldersView> {
                 final folder = widget.appState.projectFolders[index];
                 final isSelected =
                     widget.appState.currentlySelectedFolder.value?.path ==
-                    folder.path;
+                        folder.path;
 
                 return _buildFolderCard(context, folder, isSelected);
               },
@@ -152,10 +152,9 @@ class _FoldersViewState extends State<FoldersView> {
                   child: Text(
                     folder.name,
                     style: MacosTheme.of(context).typography.headline.copyWith(
-                      fontWeight: isSelected
-                          ? FontWeight.w600
-                          : FontWeight.w500,
-                    ),
+                          fontWeight:
+                              isSelected ? FontWeight.w600 : FontWeight.w500,
+                        ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -172,8 +171,8 @@ class _FoldersViewState extends State<FoldersView> {
             Text(
               folder.path,
               style: MacosTheme.of(context).typography.caption1.copyWith(
-                color: CupertinoColors.secondaryLabel,
-              ),
+                    color: CupertinoColors.inactiveGray,
+                  ),
               overflow: TextOverflow.ellipsis,
               maxLines: 2,
             ),
@@ -186,11 +185,13 @@ class _FoldersViewState extends State<FoldersView> {
                 ),
                 const Spacer(),
                 Text(
-                  folder.addedAt.format('MMM d, yyyy'),
+                  folder.addedAt.format('yyyy-MM-dd'),
                   style: MacosTheme.of(context).typography.caption1.copyWith(
-                    color: CupertinoColors.secondaryLabel,
-                  ),
+                        color: CupertinoColors.inactiveGray,
+                      ),
                 ),
+
+                // TODO: human friendly "since" date
               ],
             ),
           ],
