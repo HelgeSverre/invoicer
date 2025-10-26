@@ -8,6 +8,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/intl.dart';
 import 'package:invoicer/extractor.dart';
 import 'package:invoicer/models.dart';
+import 'package:macos_ui/macos_ui.dart';
 import 'package:path/path.dart' as path;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:signals/signals.dart';
@@ -35,9 +36,6 @@ class AppState {
   ); // Files added individually
   final apiKey = signal<String>("");
   final aiModel = signal<String>("gpt-4.1-mini");
-  final promptTemplate = signal<String>(
-    'Additional instructions for AI processing (currently unused - extraction is guided by function definitions)',
-  );
   final isProcessingAll = signal<bool>(false);
 
   Future<void> loadSettings() async {
@@ -54,8 +52,6 @@ class AppState {
           fallback: prefs.getString('openai_model'),
         ) ??
         "gpt-4.1-mini";
-    promptTemplate.value =
-        prefs.getString('prompt_template') ?? promptTemplate.value;
 
     // Load legacy single folder for backwards compatibility
     selectedFolder.value = prefs.getString('selected_folder');
@@ -115,7 +111,6 @@ class AppState {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('openai_api_key', apiKey.value);
     await prefs.setString('openai_model', aiModel.value);
-    await prefs.setString('prompt_template', promptTemplate.value);
 
     // Save legacy folder for backwards compatibility
     if (selectedFolder.value != null) {
@@ -332,6 +327,9 @@ class AppState {
       } else {
         individualFiles[individualIndex] = updatedFile;
       }
+
+      // Save extracted data to persistent storage
+      await saveExtractedData();
     } catch (e) {
       final errorFile = file.copyWith(error: e.toString(), isProcessing: false);
 
@@ -370,15 +368,218 @@ class AppState {
     final newName = '$dateStr - $sanitizedVendor.pdf';
     final newPath = path.join(path.dirname(file.path), newName);
 
-    try {
-      // await File(file.path).rename(newPath);
+    // Don't rename if the path would be the same
+    if (file.path == newPath) {
+      return;
+    }
 
-      final index = pdfFiles.indexOf(file);
-      if (index != -1) {
-        pdfFiles[index] = file.copyWith(name: newName, path: newPath);
+    // Check if target file already exists
+    if (File(newPath).existsSync()) {
+      _showRenameErrorDialog(
+        context,
+        'Cannot rename: A file named "$newName" already exists in this location.',
+      );
+      return;
+    }
+
+    // Store original state for rollback
+    final originalFile = file;
+    final index = pdfFiles.indexOf(file);
+
+    if (index == -1) {
+      return; // File not found in list
+    }
+
+    // Optimistic UI update
+    pdfFiles[index] = file.copyWith(name: newName, path: newPath);
+
+    try {
+      // Perform the actual filesystem rename
+      await File(file.path).rename(newPath);
+
+      // Persist the change
+      await saveSettings();
+
+    } on FileSystemException catch (e) {
+      // Rollback on filesystem error
+      pdfFiles[index] = originalFile;
+
+      print('Rename failed: $e');
+
+      if (context.mounted) {
+        _showRenameErrorDialog(
+          context,
+          'Failed to rename file: ${e.message}\n\n'
+              'Possible causes:\n'
+              '• File is open in another application\n'
+              '• Insufficient permissions\n'
+              '• File is on a read-only volume',
+        );
       }
     } catch (e) {
-      print(e);
+      // Rollback on unexpected errors
+      pdfFiles[index] = originalFile;
+
+      print('Unexpected error during rename: $e');
+
+      if (context.mounted) {
+        _showRenameErrorDialog(
+          context,
+          'An unexpected error occurred while renaming the file.',
+        );
+      }
+    }
+  }
+
+  void _showRenameErrorDialog(BuildContext context, String message) {
+    showMacosAlertDialog(
+      context: context,
+      builder: (context) => MacosAlertDialog(
+        appIcon: const MacosIcon(CupertinoIcons.exclamationmark_triangle),
+        title: const Text('Rename Failed'),
+        message: Text(message),
+        primaryButton: PushButton(
+          controlSize: ControlSize.large,
+          child: const Text('OK'),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ),
+    );
+  }
+
+  // Data persistence methods (JSON file-based)
+  String _getDataFilePath() {
+    final homeDir = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
+    if (homeDir == null) {
+      throw Exception('Cannot determine user home directory');
+    }
+    return path.join(homeDir, '.invoicer', 'data.json');
+  }
+
+  Future<void> _ensureDataDirectoryExists() async {
+    final homeDir = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
+    if (homeDir == null) {
+      throw Exception('Cannot determine user home directory');
+    }
+    final dataDir = Directory(path.join(homeDir, '.invoicer'));
+    if (!dataDir.existsSync()) {
+      await dataDir.create(recursive: true);
+      print('Created data directory: ${dataDir.path}');
+    }
+  }
+
+  Future<void> saveExtractedData() async {
+    try {
+      await _ensureDataDirectoryExists();
+
+      // Collect all processed files (those with extracted data)
+      final processedFiles = [
+        ...pdfFiles.where((file) => file.vendor != null),
+        ...individualFiles.where((file) => file.vendor != null),
+      ];
+
+      final data = {
+        'version': 1,
+        'lastUpdated': DateTime.now().toIso8601String(),
+        'processedFiles': processedFiles.map((file) => file.toJson()).toList(),
+      };
+
+      final dataFilePath = _getDataFilePath();
+      final tempFilePath = '$dataFilePath.tmp';
+
+      // Write to temporary file first (atomic write pattern)
+      final tempFile = File(tempFilePath);
+      await tempFile.writeAsString(
+        jsonEncode(data),
+        flush: true,
+      );
+
+      // Move temporary file to actual file (atomic operation)
+      await tempFile.rename(dataFilePath);
+
+      print('Saved ${processedFiles.length} processed files to $dataFilePath');
+    } catch (e) {
+      print('Error saving extracted data: $e');
+      // Don't throw - silent failure is better than blocking user
+    }
+  }
+
+  Future<void> loadExtractedData() async {
+    try {
+      final dataFilePath = _getDataFilePath();
+      final dataFile = File(dataFilePath);
+
+      if (!dataFile.existsSync()) {
+        print('No cached data file found at $dataFilePath');
+        return;
+      }
+
+      final jsonString = await dataFile.readAsString();
+      final data = jsonDecode(jsonString) as Map<String, dynamic>;
+
+      final version = data['version'] as int? ?? 1;
+      if (version != 1) {
+        print('Unknown data version: $version, skipping cache load');
+        return;
+      }
+
+      final processedFilesList = data['processedFiles'] as List<dynamic>? ?? [];
+      final processedFiles = processedFilesList
+          .map((json) {
+            try {
+              return PdfDocument.fromJson(json as Map<String, dynamic>);
+            } catch (e) {
+              print('Error parsing saved file: $e');
+              return null;
+            }
+          })
+          .whereType<PdfDocument>()
+          .toList();
+
+      int restoredCount = 0;
+
+      // Restore extracted data for files that still exist
+      for (var processed in processedFiles) {
+        // Only restore if file still exists on disk
+        if (!File(processed.path).existsSync()) {
+          print('Skipping ${processed.name} - file no longer exists');
+          continue;
+        }
+
+        if (processed.source == 'folder') {
+          final index = pdfFiles.indexWhere((f) => f.path == processed.path);
+          if (index != -1) {
+            pdfFiles[index] = processed;
+            restoredCount++;
+          }
+        } else {
+          // Individual file
+          final index = individualFiles.indexWhere((f) => f.path == processed.path);
+          if (index != -1) {
+            individualFiles[index] = processed;
+            restoredCount++;
+          }
+        }
+      }
+
+      final lastUpdated = data['lastUpdated'] as String?;
+      print('Restored $restoredCount processed files from cache (last updated: $lastUpdated)');
+    } catch (e) {
+      print('Error loading extracted data: $e');
+      // Don't throw - app should still work without cache
+    }
+  }
+
+  Future<void> clearExtractedDataCache() async {
+    try {
+      final dataFilePath = _getDataFilePath();
+      final dataFile = File(dataFilePath);
+      if (dataFile.existsSync()) {
+        await dataFile.delete();
+        print('Cleared extracted data cache');
+      }
+    } catch (e) {
+      print('Error clearing cache: $e');
     }
   }
 
