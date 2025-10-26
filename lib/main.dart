@@ -1,29 +1,29 @@
 import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:invoicer/dialogs/settings_dialog.dart';
 import 'package:invoicer/state.dart';
+import 'package:invoicer/utils.dart';
 import 'package:invoicer/views/files_view.dart';
 import 'package:invoicer/views/folders_view.dart';
 import 'package:macos_ui/macos_ui.dart';
 import 'package:signals/signals_flutter.dart' hide signal;
 
-Future<void> _configureMacosWindowUtils() async {
-  const config = MacosWindowUtilsConfig();
-  await config.apply();
+Future<void> _bootstrap() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await dotenv.load(fileName: ".env", isOptional: true);
+
+  if (Platform.isMacOS) {
+    const config = MacosWindowUtilsConfig();
+    await config.apply();
+  }
 }
 
 Future<void> main() async {
-  await dotenv.load(fileName: ".env");
-
-  if (!kIsWeb) {
-    if (Platform.isMacOS) {
-      await _configureMacosWindowUtils();
-    }
-  }
+  await _bootstrap();
 
   runApp(const InvoicerApp());
 }
@@ -135,7 +135,6 @@ class _InvoicerMainScreenState extends State<InvoicerMainScreen> {
             },
             showLabel: true,
             tooltipMessage: 'Open application settings',
-
           ),
           ToolBarIconButton(
             label: 'Add Folder',
@@ -167,6 +166,15 @@ class _InvoicerMainScreenState extends State<InvoicerMainScreen> {
           centerTitle: false,
           title: Text('Invoicer'),
           actions: [
+            ToolBarIconButton(
+              label: 'Open Folder',
+              icon: const MacosIcon(CupertinoIcons.folder_open),
+              onPressed: currentFolder != null
+                  ? () => revealFolderInFinder(currentFolder.path)
+                  : null,
+              showLabel: false,
+              tooltipMessage: 'Open current folder in Finder',
+            ),
             ToolBarIconButton(
               label: 'Add Files',
               icon: const MacosIcon(CupertinoIcons.plus),

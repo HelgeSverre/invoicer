@@ -5,11 +5,10 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:invoicer/models.dart';
 import 'package:invoicer/state.dart';
+import 'package:invoicer/utils.dart';
 import 'package:macos_ui/macos_ui.dart';
-import 'package:path/path.dart' as path;
 import 'package:signals/signals_flutter.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class FileDetailDialog extends StatefulWidget {
   final PdfDocument initialFile;
@@ -165,7 +164,7 @@ class _FileDetailDialogState extends State<FileDetailDialog> {
             message: 'Open file location in Finder',
             child: MacosIconButton(
               icon: const MacosIcon(CupertinoIcons.folder_open),
-              onPressed: () => _openFileInFinder(file.path),
+              onPressed: () => revealFileInFinder(file.path),
             ),
           ),
           const SizedBox(width: 8),
@@ -641,17 +640,6 @@ class _FileDetailDialogState extends State<FileDetailDialog> {
       await Clipboard.setData(ClipboardData(text: filePath));
     } catch (e) {
       debugPrint('Could not copy file path to clipboard: $e');
-    }
-  }
-
-  Future<void> _openFileInFinder(String filePath) async {
-    try {
-      final uri = Uri.file(path.dirname(filePath));
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri);
-      }
-    } catch (e) {
-      debugPrint('Could not open file location: $e');
     }
   }
 }

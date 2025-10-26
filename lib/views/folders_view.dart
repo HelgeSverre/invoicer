@@ -89,11 +89,12 @@ class _FoldersViewState extends State<FoldersView> {
             GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
+
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 3,
                 crossAxisSpacing: 16,
                 mainAxisSpacing: 16,
-                childAspectRatio: 2.5,
+                childAspectRatio: 2.25,
               ),
               itemCount: widget.appState.projectFolders.length,
               itemBuilder: (context, index) {
@@ -125,12 +126,12 @@ class _FoldersViewState extends State<FoldersView> {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: isSelected
-              ? MacosTheme.of(context).primaryColor.withOpacity(0.08)
+              ? MacosTheme.of(context).primaryColor.withValues(alpha: 0.08)
               : MacosTheme.of(context).canvasColor,
           border: Border.all(
             color: isSelected
                 ? MacosTheme.of(context).primaryColor
-                : MacosTheme.of(context).dividerColor.withOpacity(0.5),
+                : MacosTheme.of(context).dividerColor.withValues(alpha: 0.5),
             width: isSelected ? 1.5 : 0.5,
           ),
           borderRadius: BorderRadius.circular(8),
@@ -200,8 +201,8 @@ class _FoldersViewState extends State<FoldersView> {
     );
   }
 
-  void _showRemoveFolderDialog(BuildContext context, ProjectFolder folder) {
-    showMacosAlertDialog(
+  Future _showRemoveFolderDialog(BuildContext context, ProjectFolder folder) {
+    return showMacosAlertDialog(
       context: context,
       builder: (context) => MacosAlertDialog(
         appIcon: const MacosIcon(CupertinoIcons.folder_fill),

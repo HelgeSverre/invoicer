@@ -356,7 +356,7 @@ class _FilesViewState extends State<FilesView> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: MacosTheme.of(context).canvasColor.withOpacity(0.5),
+        color: MacosTheme.of(context).canvasColor.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: MacosTheme.of(context).dividerColor),
       ),
