@@ -54,9 +54,16 @@ just pod-install
 
 **3) Configure OpenAI**
 
-Option A (file-based): create a `.env` file at repository root with:
+Option A (file-based): copy the example env file and add your API key:
+```bash
+cp .env.example .env
+# Edit .env and replace the placeholder with your actual OpenAI API key
+```
+
+The `.env` file should contain:
 ```env
-OPENAI_API_KEY=sk-...
+OPENAI_API_KEY=sk-proj-your-actual-key-here
+OPENAI_MODEL=gpt-4.1-mini
 ```
 
 Option B (in-app): run the app and set the key in the Settings dialog. The key is stored locally (SharedPreferences).
@@ -141,9 +148,20 @@ just pod-install
 ## Configuration
 
 **.env file** (loaded via flutter_dotenv):
-```env
-OPENAI_API_KEY=...
+
+A `.env.example` file is provided as a template. To configure:
+```bash
+cp .env.example .env
+# Edit .env and replace placeholder values with your actual OpenAI API key
 ```
+
+Example `.env` contents:
+```env
+OPENAI_API_KEY=sk-proj-your-actual-key-here
+OPENAI_MODEL=gpt-4.1-mini
+```
+
+**Note:** The `.env` file is gitignored to keep your API key private.
 
 **Settings dialog** (persisted locally) can also store the key at runtime.
 
