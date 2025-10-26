@@ -21,6 +21,7 @@ dependencies:
   syncfusion_flutter_pdfviewer: ^31.2.3
   path: ^1.8.3
   intl: ^0.20.2
+  timeago: ^3.6.1
   flutter_dotenv: ^6.0.0
   macos_ui: ^2.1.10
   macos_window_utils: ^1.8.1
