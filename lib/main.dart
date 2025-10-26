@@ -110,6 +110,10 @@ class _InvoicerMainScreenState extends State<InvoicerMainScreen> {
     );
   }
 
+  void _quitApp() {
+    exit(0);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
@@ -143,6 +147,19 @@ class _InvoicerMainScreenState extends State<InvoicerMainScreen> {
                   ),
                 ],
               ),
+              // Quit menu item
+              PlatformMenuItemGroup(
+                members: [
+                  PlatformMenuItem(
+                    label: 'Quit Invoicer',
+                    shortcut: const SingleActivator(
+                      LogicalKeyboardKey.keyQ,
+                      meta: true,
+                    ),
+                    onSelected: _quitApp,
+                  ),
+                ],
+              ),
             ],
           ),
         ],
@@ -154,6 +171,10 @@ class _InvoicerMainScreenState extends State<InvoicerMainScreen> {
                 LogicalKeyboardKey.comma,
                 meta: true,
               ): _openSettings,
+              const SingleActivator(
+                LogicalKeyboardKey.keyQ,
+                meta: true,
+              ): _quitApp,
             },
             child: MacosWindow(
               disableWallpaperTinting: true,
