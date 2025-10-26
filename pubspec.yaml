@@ -1,6 +1,5 @@
 name: invoicer
 description: A Flutter desktop app for processing invoices and receipts with OpenAI
-
 publish_to: 'none'
 
 version: 1.0.0+1
@@ -37,7 +36,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: false
-
-
   assets:
     - .env
