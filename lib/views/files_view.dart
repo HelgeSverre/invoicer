@@ -1,5 +1,4 @@
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:invoicer/dialogs/file_detail_dialog.dart';
 import 'package:invoicer/models.dart';
@@ -42,10 +41,6 @@ class _FilesViewState extends State<FilesView> {
               _buildCurrentFolderInfo(context, currentFolder),
               const SizedBox(height: 16),
             ],
-
-            // Add files section
-            _buildAddFilesSection(context),
-            const SizedBox(height: 16),
 
             // Table Header
             _buildTableHeader(context),
@@ -183,11 +178,18 @@ class _FilesViewState extends State<FilesView> {
                       ),
                     )
                   else if (file.vendor != null)
-                        MacosIconButton(
-                          padding: EdgeInsets.zero,
-                          icon: const MacosIcon(CupertinoIcons.square_arrow_up, size: 16),
-                          onPressed: () => widget.appState.renameFile(file, context),
+                    MacosTooltip(
+                      message: 'Rename this file',
+                      child: MacosIconButton(
+                        padding: EdgeInsets.zero,
+                        icon: const MacosIcon(CupertinoIcons.square_arrow_up,
+                            size: 16),
+                        onPressed: () => widget.appState.renameFile(
+                          file,
+                          context,
                         ),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -233,9 +235,10 @@ class _FilesViewState extends State<FilesView> {
     }
   }
 
-  void _showFileDetails(PdfDocument file) {
-    showMacosSheet(
+  Future _showFileDetails(PdfDocument file) {
+    return showMacosSheet(
       context: context,
+      barrierDismissible: true,
       builder: (context) => FileDetailDialog(initialFile: file),
     );
   }
@@ -373,44 +376,6 @@ class _FilesViewState extends State<FilesView> {
                   style: MacosTheme.of(context).typography.caption1,
                   overflow: TextOverflow.ellipsis,
                 ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAddFilesSection(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: MacosTheme.of(context).primaryColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: MacosTheme.of(context).primaryColor.withOpacity(0.3),
-          style: BorderStyle.solid,
-        ),
-      ),
-      child: Row(
-        children: [
-          const MacosIcon(CupertinoIcons.cloud_download, size: 16),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'Click Add Files to select PDF files',
-              style: MacosTheme.of(context).typography.body,
-            ),
-          ),
-          PushButton(
-            controlSize: ControlSize.mini,
-            onPressed: widget.appState.addIndividualFiles,
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                MacosIcon(CupertinoIcons.plus, size: 12),
-                SizedBox(width: 4),
-                Text('Add Files'),
               ],
             ),
           ),
