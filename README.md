@@ -36,11 +36,8 @@ produce normalized invoice fields (vendor, dates, items, totals, tax, etc.).
 brew install just
 
 # fvm (Flutter version manager)
-dart pub global activate fvm
-# or: brew install fvm
-
-# CocoaPods (macOS)
-sudo gem install cocoapods
+brew tap leoafarias/fvm
+brew install fvm
 ```
 
 **2) Clone and prepare**
@@ -48,9 +45,7 @@ sudo gem install cocoapods
 ```bash
 git clone https://github.com/HelgeSverre/invoicer.git
 cd invoicer
-fvm install
 just install
-just pod-install
 ```
 
 **3) Configure OpenAI**
