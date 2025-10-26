@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show ThemeMode;
+import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:invoicer/dialogs/settings_dialog.dart';
 import 'package:invoicer/state.dart';
@@ -64,6 +65,9 @@ class _InvoicerMainScreenState extends State<InvoicerMainScreen> {
   Future<void> _initializeApp() async {
     await appState.loadSettings();
 
+    // Load cached extracted data
+    await appState.loadExtractedData();
+
     // Auto-select first folder if available and no current selection
     if (appState.currentlySelectedFolder.value == null &&
         appState.projectFolders.isNotEmpty) {
@@ -76,40 +80,82 @@ class _InvoicerMainScreenState extends State<InvoicerMainScreen> {
     }
   }
 
+  void _openSettings() {
+    showMacosSheet(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => SettingsDialog(
+        appState: appState,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
       final currentView = appState.currentView.value;
       final sidebarIndex = currentView == 'folders' ? 0 : 1;
 
-      return MacosWindow(
-        disableWallpaperTinting: true,
-        sidebar: Sidebar(
-          minWidth: 200,
-          builder: (context, scrollController) {
-            return SidebarItems(
-              currentIndex: sidebarIndex,
-              scrollController: scrollController,
-              onChanged: (i) {
-                appState.currentView.value = i == 0 ? 'folders' : 'files';
-              },
-              items: const [
-                SidebarItem(section: true, label: Text('Documents')),
-                SidebarItem(
-                  leading: MacosIcon(CupertinoIcons.folder),
-                  label: Text('Folders'),
-                ),
-                SidebarItem(
-                  leading: MacosIcon(CupertinoIcons.doc),
-                  label: Text('Files'),
-                ),
-              ],
-            );
-          },
-        ),
-        child: IndexedStack(
-          index: sidebarIndex,
-          children: [_buildFoldersView(), _buildFilesView()],
+      return PlatformMenuBar(
+        menus: [
+          PlatformMenu(
+            label: 'Invoicer',
+            menus: [
+              PlatformMenuItemGroup(
+                members: [
+                  PlatformMenuItem(
+                    label: 'Preferences…',
+                    shortcut: const SingleActivator(
+                      LogicalKeyboardKey.comma,
+                      meta: true,
+                    ),
+                    onSelected: _openSettings,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+        child: Focus(
+          autofocus: true,
+          child: CallbackShortcuts(
+            bindings: {
+              const SingleActivator(
+                LogicalKeyboardKey.comma,
+                meta: true,
+              ): _openSettings,
+            },
+            child: MacosWindow(
+              disableWallpaperTinting: true,
+              sidebar: Sidebar(
+                minWidth: 200,
+                builder: (context, scrollController) {
+                  return SidebarItems(
+                    currentIndex: sidebarIndex,
+                    scrollController: scrollController,
+                    onChanged: (i) {
+                      appState.currentView.value = i == 0 ? 'folders' : 'files';
+                    },
+                    items: const [
+                      SidebarItem(section: true, label: Text('Documents')),
+                      SidebarItem(
+                        leading: MacosIcon(CupertinoIcons.folder),
+                        label: Text('Folders'),
+                      ),
+                      SidebarItem(
+                        leading: MacosIcon(CupertinoIcons.doc),
+                        label: Text('Files'),
+                      ),
+                    ],
+                  );
+                },
+              ),
+              child: IndexedStack(
+                index: sidebarIndex,
+                children: [_buildFoldersView(), _buildFilesView()],
+              ),
+            ),
+          ),
         ),
       );
     });
@@ -124,17 +170,9 @@ class _InvoicerMainScreenState extends State<InvoicerMainScreen> {
           ToolBarIconButton(
             label: 'Settings',
             icon: const MacosIcon(CupertinoIcons.settings),
-            onPressed: () {
-              showMacosSheet(
-                context: context,
-                barrierDismissible: true,
-                builder: (context) => SettingsDialog(
-                  appState: appState,
-                ),
-              );
-            },
+            onPressed: _openSettings,
             showLabel: true,
-            tooltipMessage: 'Open application settings',
+            tooltipMessage: 'Open application settings (⌘,)',
           ),
           ToolBarIconButton(
             label: 'Add Folder',
@@ -166,6 +204,13 @@ class _InvoicerMainScreenState extends State<InvoicerMainScreen> {
           centerTitle: false,
           title: Text('Invoicer'),
           actions: [
+            ToolBarIconButton(
+              label: 'Settings',
+              icon: const MacosIcon(CupertinoIcons.settings),
+              onPressed: _openSettings,
+              showLabel: false,
+              tooltipMessage: 'Open application settings (⌘,)',
+            ),
             ToolBarIconButton(
               label: 'Open Folder',
               icon: const MacosIcon(CupertinoIcons.folder_open),
