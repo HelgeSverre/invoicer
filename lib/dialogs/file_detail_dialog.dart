@@ -225,35 +225,6 @@ class _FileDetailDialogState extends State<FileDetailDialog> {
           children: [
             // Invoice Information Data Grid (only if file has been processed successfully)
             if (file.hasInvoiceDetails) _buildInvoiceDataGrid(context, file),
-            //
-            // if (file.items.isNotEmpty)
-            //   Container(
-            //     padding: const EdgeInsets.all(16),
-            //     decoration: BoxDecoration(
-            //       color: MacosTheme.of(context).canvasColor,
-            //       borderRadius: file.vendor != null || file.invoiceDate != null
-            //           ? null
-            //           : const BorderRadius.vertical(top: Radius.circular(8)),
-            //       border: Border(
-            //         top: BorderSide(
-            //           color: MacosTheme.of(context).dividerColor,
-            //           width: 0.5,
-            //         ),
-            //         bottom: BorderSide(
-            //           color: MacosTheme.of(context).dividerColor,
-            //           width: 0.5,
-            //         ),
-            //       ),
-            //     ),
-            //     child: Row(
-            //       children: [
-            //         Text(
-            //           'Items',
-            //           style: MacosTheme.of(context).typography.headline,
-            //         ),
-            //       ],
-            //     ),
-            //   ),
 
             // Content Area
             Expanded(child: _buildContentArea(context, file)),
