@@ -4,6 +4,7 @@ import 'package:invoicer/dialogs/file_detail_dialog.dart';
 import 'package:invoicer/models.dart';
 import 'package:invoicer/state.dart';
 import 'package:macos_ui/macos_ui.dart';
+import 'package:path/path.dart' as path;
 import 'package:signals/signals_flutter.dart';
 
 class FilesView extends StatefulWidget {
@@ -101,6 +102,21 @@ class _FilesViewState extends State<FilesView> {
                 ],
               ),
             ),
+            // Source
+            Expanded(
+              flex: 2,
+              child: Text(
+                file.source == 'folder'
+                    ? (file.folderPath != null
+                        ? path.basename(file.folderPath!)
+                        : 'Folder')
+                    : 'Individual',
+                style: MacosTheme.of(context).typography.body.copyWith(
+                  color: CupertinoColors.systemGrey,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
             // Vendor
             Expanded(
               flex: 2,
@@ -182,7 +198,7 @@ class _FilesViewState extends State<FilesView> {
                       message: 'Rename this file',
                       child: MacosIconButton(
                         padding: EdgeInsets.zero,
-                        icon: const MacosIcon(CupertinoIcons.square_arrow_up,
+                        icon: const MacosIcon(CupertinoIcons.pencil,
                             size: 16),
                         onPressed: () => widget.appState.renameFile(
                           file,

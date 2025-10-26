@@ -3,6 +3,7 @@ import 'package:invoicer/models.dart';
 import 'package:invoicer/state.dart';
 import 'package:macos_ui/macos_ui.dart';
 import 'package:signals/signals_flutter.dart';
+import 'package:timeago/timeago.dart' as timeago;
 
 class FoldersView extends StatefulWidget {
   final AppState appState;
@@ -186,13 +187,11 @@ class _FoldersViewState extends State<FoldersView> {
                 ),
                 const Spacer(),
                 Text(
-                  folder.addedAt.format('yyyy-MM-dd'),
+                  '${folder.addedAt.format('yyyy-MM-dd')} (${timeago.format(folder.addedAt, locale: 'en_short')})',
                   style: MacosTheme.of(context).typography.caption1.copyWith(
                         color: CupertinoColors.inactiveGray,
                       ),
                 ),
-
-                // TODO: human friendly "since" date
               ],
             ),
           ],

@@ -90,6 +90,26 @@ class _InvoicerMainScreenState extends State<InvoicerMainScreen> {
     );
   }
 
+  void _showAboutDialog() {
+    showMacosAlertDialog(
+      context: context,
+      builder: (context) => MacosAlertDialog(
+        appIcon: const FlutterLogo(size: 64),
+        title: const Text('About Invoicer'),
+        message: const Text(
+          'Version 1.0.0\n\n'
+          'A Flutter desktop app for processing invoices and receipts with OpenAI.\n\n'
+          'Copyright © 2025 Liseth Solutions. All rights reserved.',
+        ),
+        primaryButton: PushButton(
+          controlSize: ControlSize.large,
+          child: const Text('OK'),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
@@ -101,6 +121,16 @@ class _InvoicerMainScreenState extends State<InvoicerMainScreen> {
           PlatformMenu(
             label: 'Invoicer',
             menus: [
+              // About menu item
+              PlatformMenuItemGroup(
+                members: [
+                  PlatformMenuItem(
+                    label: 'About Invoicer',
+                    onSelected: _showAboutDialog,
+                  ),
+                ],
+              ),
+              // Preferences menu item (separated by macOS automatically)
               PlatformMenuItemGroup(
                 members: [
                   PlatformMenuItem(
