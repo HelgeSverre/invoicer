@@ -4,14 +4,13 @@
 [![Platform](https://img.shields.io/badge/platform-macOS-lightgrey?logo=apple&logoColor=white)](https://developer.apple.com/macos/)
 [![License](https://img.shields.io/github/license/HelgeSverre/invoicer)](LICENSE)
 
-
 <p align="center">
   <img src="art/screenshot-detail.png" alt="Screenshot">
 </p>
 
-A macOS desktop app built with Flutter that extracts structured data from invoice PDFs. The app uses Syncfusion PDF for text extraction and sends the extracted text to OpenAI via function calling to produce normalized invoice fields (vendor, dates, items, totals, tax, etc.).
-
-This repository focuses on clear, local desktop processing with a small, well-scoped UI and no external backend services.
+A macOS desktop app built with Flutter that extracts structured data from invoice PDFs. The app uses
+Syncfusion PDF for text extraction and sends the extracted text to OpenAI via function calling to
+produce normalized invoice fields (vendor, dates, items, totals, tax, etc.).
 
 ## What it does
 
@@ -31,6 +30,7 @@ This repository focuses on clear, local desktop processing with a small, well-sc
 ## Setup
 
 **1) Install prerequisites**
+
 ```bash
 # just (task runner)
 brew install just
@@ -44,6 +44,7 @@ sudo gem install cocoapods
 ```
 
 **2) Clone and prepare**
+
 ```bash
 git clone https://github.com/HelgeSverre/invoicer.git
 cd invoicer
@@ -55,20 +56,24 @@ just pod-install
 **3) Configure OpenAI**
 
 Option A (file-based): copy the example env file and add your API key:
+
 ```bash
 cp .env.example .env
 # Edit .env and replace the placeholder with your actual OpenAI API key
 ```
 
 The `.env` file should contain:
+
 ```env
 OPENAI_API_KEY=sk-proj-your-actual-key-here
 OPENAI_MODEL=gpt-4.1-mini
 ```
 
-Option B (in-app): run the app and set the key in the Settings dialog. The key is stored locally (SharedPreferences).
+Option B (in-app): run the app and set the key in the Settings dialog. The key is stored locally (
+SharedPreferences).
 
 **4) Run**
+
 ```bash
 just run
 # or: fvm flutter run -d macos
@@ -77,19 +82,23 @@ just run
 ## Usage
 
 - Add a folder to watch invoices or add PDFs individually.
-- Start processing; the app extracts text from PDFs and sends the text to OpenAI with a function-calling schema to return normalized invoice fields.
+- Start processing; the app extracts text from PDFs and sends the text to OpenAI with a
+  function-calling schema to return normalized invoice fields.
 - Review the parsed output in the Files view; open file details for the full extracted structure.
 
 **Notes:**
+
 - Processing is local except for the OpenAI API call (PDF text is sent to OpenAI).
 - Model defaults can be adjusted in code (see extractor notes below).
 
 ## Development
 
-This repo uses fvm to pin and consistently use a Flutter SDK version. All justfile commands call Flutter via fvm.
+This repo uses fvm to pin and consistently use a Flutter SDK version. All justfile commands call
+Flutter via fvm.
 
 - Verify your setup: `fvm flutter doctor`
-- If you prefer not to install fvm, replace justfile invocations with the equivalent flutter commands (but version drift is on you).
+- If you prefer not to install fvm, replace justfile invocations with the equivalent flutter
+  commands (but version drift is on you).
 
 ### justfile commands
 
@@ -112,8 +121,10 @@ just pod-reset    # Clean pod artifacts and reinstall
 ### Project structure (high level)
 
 - `lib/main.dart`: app entry point and macOS window setup
-- `lib/state.dart`: AppState singleton with signals-based state management (project folders, files, status)
-- `lib/extractor.dart`: PDF text extraction (Syncfusion), OpenAI function-calling request, Dio + cache
+- `lib/state.dart`: AppState singleton with signals-based state management (project folders, files,
+  status)
+- `lib/extractor.dart`: PDF text extraction (Syncfusion), OpenAI function-calling request, Dio +
+  cache
 - `lib/models.dart`: basic models (PdfDocument, ProjectFolder, ReceiptItem)
 - `lib/views/`: folders and files views
 - `lib/dialogs/`: settings dialog (API key), file detail dialog
@@ -130,7 +141,8 @@ just pod-reset    # Clean pod artifacts and reinstall
 - **UI:** macos_ui for native macOS look-and-feel
 - **Settings:** SharedPreferences; API key via .env or settings dialog
 - **Networking:** Dio with caching interceptor for API requests
-- **Model defaults:** extractor defaults to gpt-4.1-mini; overrideable via code (`extractReceiptData(model: ...)`)
+- **Model defaults:** extractor defaults to gpt-4.1-mini; overrideable via code (
+  `extractReceiptData(model: ...)`)
 
 ## Building
 
@@ -140,6 +152,7 @@ just build
 ```
 
 If you hit CocoaPods issues:
+
 ```bash
 just pod-reset
 just pod-install
@@ -150,12 +163,14 @@ just pod-install
 **.env file** (loaded via flutter_dotenv):
 
 A `.env.example` file is provided as a template. To configure:
+
 ```bash
 cp .env.example .env
 # Edit .env and replace placeholder values with your actual OpenAI API key
 ```
 
 Example `.env` contents:
+
 ```env
 OPENAI_API_KEY=sk-proj-your-actual-key-here
 OPENAI_MODEL=gpt-4.1-mini
@@ -169,19 +184,23 @@ No external backend required; network calls are to the OpenAI API.
 
 ## Privacy and data handling
 
-- PDF text is sent to OpenAI during extraction; do not process sensitive documents unless that's acceptable for your use-case and OpenAI account/data policies.
+- PDF text is sent to OpenAI during extraction; do not process sensitive documents unless that's
+  acceptable for your use-case and OpenAI account/data policies.
 - No analytics or telemetry are implemented in this app.
-- Syncfusion's Flutter PDF library is used for text extraction (review their license terms for your usage).
+- Syncfusion's Flutter PDF library is used for text extraction (review their license terms for your
+  usage).
 
 ## Limitations
 
 - PDF extraction fidelity varies with source quality; some invoices may not parse perfectly.
-- The OpenAI output depends on the model and prompt/schema; occasional corrections or re-runs may be needed.
+- The OpenAI output depends on the model and prompt/schema; occasional corrections or re-runs may be
+  needed.
 - Currently targets macOS only.
 
 ## Contributing
 
-Issues and PRs are welcome. Keep changes focused and incremental. Prefer existing patterns (signals, macos_ui, extractor flow) and avoid introducing new dependencies unless necessary.
+Issues and PRs are welcome. Keep changes focused and incremental. Prefer existing patterns (signals,
+macos_ui, extractor flow) and avoid introducing new dependencies unless necessary.
 
 - Code quality: `just analyze`
 - Tests: `just test`
