@@ -48,6 +48,7 @@ Future<void> renameFile(PdfDocument file, BuildContext context) async {
 ```
 
 **Impact**:
+
 - UI shows the file as renamed, but the actual PDF file on disk retains its original name
 - File path stored in state becomes invalid (points to non-existent renamed file)
 - Attempting to open/process the "renamed" file will fail
@@ -66,17 +67,20 @@ Future<void> renameFile(PdfDocument file, BuildContext context) async {
 **Issue**: When PDF files are processed and invoice data is extracted via AI, all extracted data (vendor, dates, items, amounts) is stored only in-memory via signals. There is NO persistence mechanism for extracted data.
 
 **Evidence**:
+
 - `PdfDocument` model has no `toJson()/fromJson()` methods
 - `ReceiptItem` model has `fromJson()` but no `toJson()`
 - `saveSettings()` only saves file paths, not extracted data
 - When app restarts, all previously extracted invoice data is lost
 
 **Impact**:
+
 - Users must re-process files every time they restart the app
 - Wastes OpenAI API credits on repeated processing
 - Poor user experience - no data persistence
 
 **Expected Behavior**:
+
 - Extracted invoice data should be saved to disk (JSON, SQLite, or similar)
 - On app startup, should load previously extracted data
 - Only re-process files that haven't been processed yet or on explicit user request
@@ -110,6 +114,7 @@ This setting is loaded/saved but never actually used in the extraction process.
 ### File: `/Users/helge/code/invoicer/lib/state.dart`
 
 #### Issue 1: File Rename is Bypassed (HIGH)
+
 - **Lines**: 360-383
 - **Function**: `renameFile()`
 - **Category**: Bypassed Functionality / State-Only Update
@@ -117,6 +122,7 @@ This setting is loaded/saved but never actually used in the extraction process.
 - **Details**: See Critical Findings section above
 
 #### Issue 2: Extracted Data Not Persisted (HIGH)
+
 - **Lines**: 274-345 (processFile method), entire state management
 - **Function**: `processFile()`, `saveSettings()`
 - **Category**: Incomplete Implementation / Missing Persistence
@@ -124,6 +130,7 @@ This setting is loaded/saved but never actually used in the extraction process.
 - **Details**: See Critical Findings section above
 
 #### Issue 3: Prompt Template Unused (MEDIUM)
+
 - **Lines**: 38-40, 58
 - **Function**: `promptTemplate` signal
 - **Category**: Mocked/Stubbed Feature
@@ -131,6 +138,7 @@ This setting is loaded/saved but never actually used in the extraction process.
 - **What should happen**: Remove or implement in extraction logic
 
 #### Issue 4: No Error Handling in processAllFiles (LOW)
+
 - **Lines**: 347-358
 - **Function**: `processAllFiles()`
 - **Category**: Incomplete Implementation
@@ -158,6 +166,7 @@ Future<void> processAllFiles() async {
 ### File: `/Users/helge/code/invoicer/lib/models.dart`
 
 #### Issue 5: Incomplete Serialization (HIGH)
+
 - **Lines**: 78-182 (PdfDocument class), 7-30 (ReceiptItem class)
 - **Category**: Incomplete Implementation
 - **Description**: Models lack complete serialization for persistence
@@ -173,6 +182,7 @@ Future<void> processAllFiles() async {
 ### File: `/Users/helge/code/invoicer/lib/views/folders_view.dart`
 
 #### Issue 6: TODO - Human Friendly Date Display (LOW)
+
 - **Lines**: 195
 - **Function**: `_buildFolderCard()`
 - **Category**: Incomplete Implementation
@@ -196,6 +206,7 @@ Text(
 ### File: `/Users/helge/code/invoicer/lib/views/files_view.dart`
 
 #### Issue 7: Table Header Mismatch (MEDIUM)
+
 - **Lines**: 387-410, 60-196
 - **Category**: UI Inconsistency
 - **Description**: Table header shows "Source" column but no corresponding data is displayed in rows
@@ -211,6 +222,7 @@ Text(
 ### File: `/Users/helge/code/invoicer/lib/dialogs/file_detail_dialog.dart`
 
 #### Issue 8: Large Commented-Out Section (MEDIUM)
+
 - **Lines**: 229-256
 - **Category**: Dead Code
 - **Description**: Large block of commented-out code for an "Items" section header
@@ -293,6 +305,7 @@ Text(
 ## Code Quality Notes
 
 ### Positive Findings
+
 - Clean separation of concerns (state, models, views, extraction)
 - Good use of signals for reactive state management
 - Proper use of async/await patterns
@@ -300,6 +313,7 @@ Text(
 - Well-structured UI components
 
 ### Areas for Improvement
+
 - Missing persistence layer is the biggest architectural gap
 - Some inconsistencies between UI and functionality
 - Could benefit from integration tests for critical paths
