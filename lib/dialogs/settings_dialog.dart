@@ -30,71 +30,86 @@ class _SettingsDialogState extends State<SettingsDialog> {
   @override
   Widget build(BuildContext context) {
     return MacosSheet(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const MacosIcon(CupertinoIcons.settings, size: 20),
-              const SizedBox(width: 8),
-              Text('Settings', style: MacosTheme.of(context).typography.title2),
-              const Spacer(),
-              MacosTooltip(
-                message: 'Close',
-                child: MacosIconButton(
-                  icon: const MacosIcon(CupertinoIcons.xmark),
-                  onPressed: () => Navigator.of(context).pop(),
+      child: Container(
+        padding: EdgeInsets.all(12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const MacosIcon(CupertinoIcons.settings, size: 20),
+                const SizedBox(width: 8),
+                Text('Settings',
+                    style: MacosTheme.of(context).typography.title2),
+                const Spacer(),
+                MacosTooltip(
+                  message: 'Close',
+                  child: MacosIconButton(
+                    icon: const MacosIcon(CupertinoIcons.xmark),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            // API Key Section
+            Text(
+              'OpenAI API Key',
+              style: MacosTheme.of(context).typography.headline,
+            ),
+            const SizedBox(height: 6),
+            Watch(
+              (context) => MacosTextField(
+                controller: _apiKeyController,
+                placeholder: 'sk-...',
+                obscureText: true,
+                prefix: MacosTooltip(
+                  message: 'Your OpenAI API key for processing receipts',
+                  child: const MacosIcon(CupertinoIcons.lock),
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 20),
-
-          // API Key Section
-          Text(
-            'OpenAI API Key',
-            style: MacosTheme.of(context).typography.headline,
-          ),
-          const SizedBox(height: 6),
-          Watch(
-            (context) => MacosTextField(
-              controller: _apiKeyController,
-              placeholder: 'sk-...',
-              obscureText: true,
-              prefix: MacosTooltip(
-                message: 'Your OpenAI API key for processing receipts',
-                child: const MacosIcon(CupertinoIcons.lock),
-              ),
             ),
-          ),
 
-          const SizedBox(height: 20),
+            const SizedBox(height: 20),
 
-          // Action Buttons
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              PushButton(
-                controlSize: ControlSize.large,
-                secondary: true,
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Cancel'),
-              ),
-              const SizedBox(width: 12),
-              PushButton(
-                controlSize: ControlSize.large,
-                onPressed: () {
-                  widget.appState.apiKey.value = _apiKeyController.text;
-                  widget.appState.promptTemplate.value = _promptController.text;
-                  widget.appState.saveSettings();
-                  Navigator.of(context).pop();
-                },
-                child: const Text('Save'),
-              ),
-            ],
-          ),
-        ],
+            // TODO: AI model selector
+
+            Placeholder(
+              fallbackHeight: 50,
+              color: MacosTheme.of(context).dividerColor,
+              strokeWidth: 1,
+            ),
+
+            const SizedBox(height: 20),
+
+            // Action Buttons
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                PushButton(
+                  controlSize: ControlSize.large,
+                  secondary: true,
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+                const SizedBox(width: 12),
+                PushButton(
+                  controlSize: ControlSize.large,
+                  onPressed: () {
+                    widget.appState.apiKey.value = _apiKeyController.text;
+                    widget.appState.promptTemplate.value =
+                        _promptController.text;
+                    widget.appState.saveSettings();
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('Save'),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

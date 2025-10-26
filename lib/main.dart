@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:invoicer/dialogs/settings_dialog.dart';
 import 'package:invoicer/state.dart';
 import 'package:invoicer/views/files_view.dart';
 import 'package:invoicer/views/folders_view.dart';
@@ -120,6 +121,22 @@ class _InvoicerMainScreenState extends State<InvoicerMainScreen> {
         centerTitle: false,
         title: const Text('Invoicer - Folders'),
         actions: [
+          ToolBarIconButton(
+            label: 'Settings',
+            icon: const MacosIcon(CupertinoIcons.settings),
+            onPressed: () {
+              showMacosSheet(
+                context: context,
+                barrierDismissible: true,
+                builder: (context) => SettingsDialog(
+                  appState: appState,
+                ),
+              );
+            },
+            showLabel: true,
+            tooltipMessage: 'Open application settings',
+
+          ),
           ToolBarIconButton(
             label: 'Add Folder',
             icon: const MacosIcon(CupertinoIcons.folder_badge_plus),
