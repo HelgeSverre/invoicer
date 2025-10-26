@@ -4,6 +4,11 @@
 [![Platform](https://img.shields.io/badge/platform-macOS-lightgrey?logo=apple&logoColor=white)](https://developer.apple.com/macos/)
 [![License](https://img.shields.io/github/license/HelgeSverre/invoicer)](LICENSE)
 
+
+<p align="center">
+  <img src="art/screenshot-detail.png" alt="Screenshot">
+</p>
+
 A macOS desktop app built with Flutter that extracts structured data from invoice PDFs. The app uses Syncfusion PDF for text extraction and sends the extracted text to OpenAI via function calling to produce normalized invoice fields (vendor, dates, items, totals, tax, etc.).
 
 This repository focuses on clear, local desktop processing with a small, well-scoped UI and no external backend services.
