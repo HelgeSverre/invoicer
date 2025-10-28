@@ -64,7 +64,9 @@ class StatsService {
   static DashboardStats calculateStats(List<PdfDocument> files) {
     final totalInvoices = files.length;
     final processedInvoices = files.where((f) => f.vendor != null).length;
-    final pendingInvoices = files.where((f) => f.vendor == null && f.error == null && !f.isProcessing).length;
+    final pendingInvoices = files
+        .where((f) => f.vendor == null && f.error == null && !f.isProcessing)
+        .length;
     final errorInvoices = files.where((f) => f.error != null).length;
 
     double totalAmount = 0.0;
@@ -95,11 +97,10 @@ class StatsService {
     Duration groupBy = const Duration(days: 7),
   }) {
     // Filter to only processed files with dates and amounts
-    final processedFiles = files.where((f) =>
-      f.vendor != null &&
-      f.invoiceDate != null &&
-      f.totalAmount != null
-    ).toList();
+    final processedFiles = files
+        .where((f) =>
+            f.vendor != null && f.invoiceDate != null && f.totalAmount != null)
+        .toList();
 
     if (processedFiles.isEmpty) {
       return [];
@@ -133,7 +134,8 @@ class StatsService {
         amount: amount,
         count: entry.value.length,
       );
-    }).toList()..sort((a, b) => a.date.compareTo(b.date));
+    }).toList()
+      ..sort((a, b) => a.date.compareTo(b.date));
   }
 
   /// Get top vendors by invoice count
@@ -162,10 +164,13 @@ class StatsService {
         0.0,
         (sum, file) => sum + (file.totalAmount ?? 0.0),
       );
-      final currency = entry.value.firstWhere(
-        (f) => f.currency != null,
-        orElse: () => entry.value.first,
-      ).currency ?? 'USD';
+      final currency = entry.value
+              .firstWhere(
+                (f) => f.currency != null,
+                orElse: () => entry.value.first,
+              )
+              .currency ??
+          'USD';
 
       return VendorStats(
         vendorName: entry.key,
