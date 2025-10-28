@@ -5,6 +5,7 @@ import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:invoicer/dialogs/settings_dialog.dart';
+import 'package:invoicer/logger.dart';
 import 'package:invoicer/state.dart';
 import 'package:invoicer/utils.dart';
 import 'package:invoicer/views/files_view.dart';
@@ -110,6 +111,10 @@ class _InvoicerMainScreenState extends State<InvoicerMainScreen> {
     );
   }
 
+  void _openLogDirectory() {
+    revealFolderInFinder(AppLogger.logDirectory);
+  }
+
   void _quitApp() {
     exit(0);
   }
@@ -150,6 +155,15 @@ class _InvoicerMainScreenState extends State<InvoicerMainScreen> {
                   PlatformMenuItem(
                     label: 'About Invoicer',
                     onSelected: _showAboutDialog,
+                  ),
+                ],
+              ),
+              // Log directory menu item
+              PlatformMenuItemGroup(
+                members: [
+                  PlatformMenuItem(
+                    label: 'Open Log Directory…',
+                    onSelected: _openLogDirectory,
                   ),
                 ],
               ),
