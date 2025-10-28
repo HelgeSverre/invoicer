@@ -4,19 +4,10 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
-import 'package:logger/logger.dart';
+import 'package:invoicer/logger.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 
-final _logger = Logger(
-  printer: PrettyPrinter(
-    methodCount: 0,
-    errorMethodCount: 5,
-    lineLength: 80,
-    colors: true,
-    printEmojis: false,
-    dateTimeFormat: DateTimeFormat.onlyTimeAndSinceStart,
-  ),
-);
+final _logger = AppLogger('Extractor');
 
 class Extractor {
   static Dio client() {
@@ -39,25 +30,16 @@ class Extractor {
   }
 
   static Future<String> extractTextFromPDF(String filePath) async {
-    _logger.i('Starting PDF text extraction', error: {'filePath': filePath});
     try {
       final Uint8List inputBytes = File(filePath).readAsBytesSync();
-      _logger.d('Read ${inputBytes.length} bytes from file');
-
       final PdfDocument document = PdfDocument(inputBytes: inputBytes);
-      _logger.d('PDF document loaded successfully');
-
       String text = PdfTextExtractor(document).extractText();
       document.dispose();
 
-      _logger.i('Text extraction completed', error: {
-        'textLength': text.length,
-        'preview': text.substring(0, text.length > 100 ? 100 : text.length),
-      });
-
+      _logger.debug('Extracted ${text.length} chars from PDF');
       return text.trim();
     } catch (e, stackTrace) {
-      _logger.e('PDF text extraction failed', error: e, stackTrace: stackTrace);
+      _logger.error('PDF extraction failed', error: e, stackTrace: stackTrace);
       throw Exception('Could not extract text from PDF: $e');
     }
   }
@@ -69,14 +51,10 @@ class Extractor {
     int maxRetries = 3,
     Duration initialDelay = const Duration(seconds: 1),
   }) async {
-    _logger.i('Starting AI extraction', error: {
-      'model': model,
-      'textLength': pdfText.length,
-      'maxRetries': maxRetries,
-    });
+    _logger.info('AI extraction with $model (${pdfText.length} chars)');
 
     if (apiKey.isEmpty) {
-      _logger.e('OpenAI API key not set');
+      _logger.error('API key not set');
       throw Exception('OpenAI API key not set');
     }
 
@@ -195,7 +173,7 @@ class Extractor {
 
     while (attemptNumber < maxRetries) {
       try {
-        _logger.d(
+        _logger.debug(
             'Sending request to OpenAI (attempt ${attemptNumber + 1}/$maxRetries)');
 
         final response = await client().post(
@@ -208,18 +186,13 @@ class Extractor {
           data: prompt,
         );
 
-        _logger.d('Received response: ${response.statusCode}');
-
         if (response.statusCode == 200) {
           var choices = response.data['choices'];
           var functionCall = choices[0]['message']['function_call'];
           var extractedData = jsonDecode(functionCall['arguments']);
 
-          _logger.i('AI extraction successful', error: {
-            'vendor': extractedData['vendor'],
-            'totalAmount': extractedData['total_amount'],
-            'items': extractedData['items']?.length ?? 0,
-          });
+          _logger.info(
+              'Extracted: ${extractedData['vendor']} (\$${extractedData['total_amount']}, ${extractedData['items']?.length ?? 0} items)');
 
           return extractedData;
         }
@@ -227,8 +200,7 @@ class Extractor {
         // Handle rate limiting (429) and server errors (5xx) with retry
         if (response.statusCode == 429 ||
             (response.statusCode! >= 500 && response.statusCode! < 600)) {
-          _logger.w('Retryable error: ${response.statusCode}',
-              error: response.data);
+          _logger.warning('Retryable error: ${response.statusCode}');
           throw _RetryableException(
             'OpenAI API error: ${response.statusCode} - ${response.data}',
             statusCode: response.statusCode,
@@ -236,7 +208,7 @@ class Extractor {
         }
 
         // Non-retryable errors (4xx except 429)
-        _logger.e('Non-retryable API error: ${response.statusCode}',
+        _logger.error('API error: ${response.statusCode}',
             error: response.data);
         throw Exception(
           'OpenAI API error: ${response.statusCode} - ${response.data}',
@@ -246,9 +218,8 @@ class Extractor {
         attemptNumber++;
 
         if (attemptNumber < maxRetries) {
-          _logger.w(
-            'Attempt $attemptNumber failed with ${e.statusCode}. Retrying in ${currentDelay.inSeconds}s...',
-          );
+          _logger.warning(
+              'Retry $attemptNumber/$maxRetries after ${currentDelay.inSeconds}s (${e.statusCode})');
           await Future.delayed(currentDelay);
           currentDelay *= 2; // Exponential backoff
         }
@@ -259,16 +230,14 @@ class Extractor {
           attemptNumber++;
 
           if (attemptNumber < maxRetries) {
-            _logger.w(
-              'Network error on attempt $attemptNumber. Retrying in ${currentDelay.inSeconds}s...',
-              error: e.message,
-            );
+            _logger.warning(
+                'Network error, retry $attemptNumber/$maxRetries after ${currentDelay.inSeconds}s');
             await Future.delayed(currentDelay);
             currentDelay *= 2; // Exponential backoff
           }
         } else {
           // Non-network Dio errors are not retryable
-          _logger.e('Non-retryable Dio error',
+          _logger.error('Request error',
               error: e.message, stackTrace: e.stackTrace);
           throw Exception('Request failed: ${e.message}');
         }
@@ -276,10 +245,8 @@ class Extractor {
     }
 
     // All retries exhausted
-    _logger.e(
-      'All retries exhausted after $maxRetries attempts',
-      error: lastException,
-    );
+    _logger.error('All retries exhausted ($maxRetries attempts)',
+        error: lastException);
     throw Exception(
       'Failed after $maxRetries attempts. Last error: ${lastException?.toString()}',
     );

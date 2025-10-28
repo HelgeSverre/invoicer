@@ -7,24 +7,15 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:invoicer/dialogs/file_detail_dialog.dart';
 import 'package:invoicer/extractor.dart';
+import 'package:invoicer/logger.dart';
 import 'package:invoicer/models.dart';
 import 'package:invoicer/services/filename_template_service.dart';
-import 'package:logger/logger.dart';
 import 'package:macos_ui/macos_ui.dart';
 import 'package:path/path.dart' as path;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:signals/signals.dart';
 
-final _logger = Logger(
-  printer: PrettyPrinter(
-    methodCount: 0,
-    errorMethodCount: 5,
-    lineLength: 80,
-    colors: true,
-    printEmojis: false,
-    dateTimeFormat: DateTimeFormat.onlyTimeAndSinceStart,
-  ),
-);
+final _logger = AppLogger('AppState');
 
 class AppState {
   static final AppState _instance = AppState._internal();
@@ -288,21 +279,14 @@ class AppState {
   }
 
   Future<void> processFile(PdfDocument file) async {
-    _logger.i('Starting file processing', error: {
-      'fileName': file.name,
-      'filePath': file.path,
-      'source': file.source,
-    });
+    _logger.info('Processing ${file.name}');
 
     // Find the file in the appropriate list
     int folderIndex = pdfFiles.indexOf(file);
     int individualIndex = individualFiles.indexOf(file);
 
     if ((folderIndex == -1 && individualIndex == -1) || file.isProcessing) {
-      _logger.w('File not found in lists or already processing', error: {
-        'fileName': file.name,
-        'isProcessing': file.isProcessing,
-      });
+      debugPrint('Warning: File not found or already processing: ${file.name}');
       return;
     }
 
@@ -318,16 +302,14 @@ class AppState {
 
     try {
       // Extract text from PDF
-      _logger.d('Extracting text from PDF');
       final textContent = await Extractor.extractTextFromPDF(file.path);
 
       if (textContent.trim().isEmpty) {
-        _logger.e('No text found in PDF', error: {'fileName': file.name});
+        debugPrint('Error: No text found in PDF: ${file.name}');
         throw Exception('No text found in PDF');
       }
 
       // Analyze with OpenAI
-      _logger.d('Analyzing with OpenAI', error: {'model': aiModel.value});
       final result = await Extractor.extractReceiptData(
         textContent,
         apiKey.value,
@@ -361,17 +343,14 @@ class AppState {
         individualFiles[individualIndex] = updatedFile;
       }
 
-      _logger.i('File processing completed successfully', error: {
-        'fileName': file.name,
-        'vendor': updatedFile.vendor,
-        'totalAmount': updatedFile.totalAmount,
-        'itemCount': updatedFile.items.length,
-      });
+      _logger.info(
+          'Completed: ${file.name} (${updatedFile.vendor}, \$${updatedFile.totalAmount}, ${updatedFile.items.length} items)');
 
       // Save extracted data to persistent storage
       await saveExtractedData();
     } catch (e, stackTrace) {
-      _logger.e('File processing failed', error: e, stackTrace: stackTrace);
+      _logger.error('Processing failed: ${file.name}',
+          error: e, stackTrace: stackTrace);
       final errorFile = file.copyWith(error: e.toString(), isProcessing: false);
 
       // Update the correct list
@@ -385,22 +364,21 @@ class AppState {
 
   Future<void> processAllFiles() async {
     if (isProcessingAll.value) {
-      _logger.w('Batch processing already in progress');
+      _logger.warning('Batch processing already in progress');
       return;
     }
 
-    _logger.i('Starting batch file processing', error: {
-      'fileCount': pdfFiles.length,
-    });
+    _logger.info('Starting batch processing (${pdfFiles.length} files)');
 
     isProcessingAll.value = true;
 
     try {
       final futures = pdfFiles.map((file) => processFile(file)).toList();
       await Future.wait(futures);
-      _logger.i('Batch file processing completed');
+      _logger.info('Batch processing completed');
     } catch (e, stackTrace) {
-      _logger.e('Batch processing error', error: e, stackTrace: stackTrace);
+      _logger.error('Batch processing failed',
+          error: e, stackTrace: stackTrace);
     } finally {
       isProcessingAll.value = false;
     }
@@ -638,7 +616,7 @@ class AppState {
 
   // Individual file management methods
   Future<void> addIndividualFiles() async {
-    _logger.i('Opening file picker for individual files');
+    _logger.info('Opening file picker');
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
@@ -647,18 +625,15 @@ class AppState {
       );
 
       if (result != null) {
-        _logger.i('Files selected', error: {'fileCount': result.files.length});
+        _logger.info('Selected ${result.files.length} files');
         for (PlatformFile file in result.files) {
           if (file.path != null) {
             await _addIndividualFile(file.path!);
           }
         }
-      } else {
-        _logger.d('File picker cancelled by user');
       }
     } catch (e, stackTrace) {
-      _logger.e('Error adding individual files',
-          error: e, stackTrace: stackTrace);
+      _logger.error('Failed to add files', error: e, stackTrace: stackTrace);
     }
   }
 
@@ -667,28 +642,25 @@ class AppState {
   }
 
   Future<void> _addIndividualFile(String filePath) async {
-    _logger.d('Adding individual file', error: {'filePath': filePath});
-
     // Check if file already exists
     final fileName = path.basename(filePath);
     final existsInIndividual = individualFiles.any((f) => f.path == filePath);
     final existsInFolder = pdfFiles.any((f) => f.path == filePath);
 
     if (existsInIndividual || existsInFolder) {
-      _logger.d('File already exists in list', error: {'fileName': fileName});
       return; // File already added
     }
 
     // Verify it's a PDF file
     if (!filePath.toLowerCase().endsWith('.pdf')) {
-      _logger.w('File is not a PDF', error: {'filePath': filePath});
+      _logger.warning('Not a PDF: $filePath');
       return;
     }
 
     // Verify file exists
     final file = File(filePath);
     if (!file.existsSync()) {
-      _logger.w('File does not exist', error: {'filePath': filePath});
+      _logger.warning('File not found: $filePath');
       return;
     }
 
@@ -699,8 +671,7 @@ class AppState {
     );
 
     individualFiles.add(pdfDoc);
-    _logger
-        .i('Individual file added successfully', error: {'fileName': fileName});
+    _logger.info('Added file: $fileName');
     await saveSettings();
   }
 
@@ -709,9 +680,49 @@ class AppState {
     await saveSettings();
   }
 
-  // Get all files (both folder and individual)
+  // Get all files from ALL folders and individual files
   List<PdfDocument> get allFiles {
-    return [...pdfFiles, ...individualFiles];
+    final allFolderFiles = <PdfDocument>[];
+
+    // Iterate through ALL project folders and collect their files
+    for (final folder in projectFolders) {
+      final dir = Directory(folder.path);
+      if (dir.existsSync()) {
+        final pdfPaths = dir
+            .listSync()
+            .where((f) => f.path.toLowerCase().endsWith('.pdf'))
+            .map((f) => f.path)
+            .toList();
+
+        for (final pdfPath in pdfPaths) {
+          final fileName = path.basename(pdfPath);
+
+          // Check if we already have this file with extracted data in current folder's pdfFiles
+          // This preserves any processing data if the file is from the currently selected folder
+          PdfDocument? existingFile;
+          try {
+            existingFile = pdfFiles.firstWhere((f) => f.path == pdfPath);
+          } catch (_) {
+            existingFile = null;
+          }
+
+          if (existingFile != null) {
+            allFolderFiles.add(existingFile);
+          } else {
+            // Create a basic PdfDocument for files not in the current selection
+            allFolderFiles.add(PdfDocument(
+              name: fileName,
+              path: pdfPath,
+              source: 'folder',
+              folderPath: folder.path,
+            ));
+          }
+        }
+      }
+    }
+
+    // Combine files from all folders + individual files
+    return [...allFolderFiles, ...individualFiles];
   }
 
   /// Process a dropped file with optional auto-rename
@@ -720,35 +731,23 @@ class AppState {
     BuildContext context, {
     bool showDialog = true,
   }) async {
-    _logger.i('Processing dropped file', error: {
-      'filePath': filePath,
-      'autoRename': autoRenameDropped.value,
-      'showDialog': showDialog,
-    });
+    _logger.info('Processing dropped file: ${path.basename(filePath)}');
 
     // Add the file as an individual file
     await _addIndividualFile(filePath);
-    _logger.d('File added to individual files list');
 
     // Find the newly added file
     final file = individualFiles.firstWhere((f) => f.path == filePath);
 
     // Process the file with AI
-    _logger.d('Starting AI processing for dropped file');
     await processFile(file);
 
     // Check if processing was successful
     final processedFile = individualFiles.firstWhere((f) => f.path == filePath);
 
     if (processedFile.vendor != null && context.mounted) {
-      _logger.i('File processing successful', error: {
-        'vendor': processedFile.vendor,
-        'willAutoRename': autoRenameDropped.value,
-      });
-
       // Auto-rename if enabled
       if (autoRenameDropped.value) {
-        _logger.d('Auto-renaming dropped file');
         await renameFile(processedFile, context);
       }
 
@@ -879,6 +878,42 @@ class AppState {
       failureCount: failureCount,
       errors: errors,
     );
+  }
+
+  /// Reset all app data (folders, files, cache) but preserve settings
+  /// (API key, model, filename template)
+  Future<void> resetAppData() async {
+    _logger.info('Resetting app data');
+
+    // Clear in-memory state
+    selectedFolder.value = null;
+    projectFolders.clear();
+    currentlySelectedFolder.value = null;
+    pdfFiles.clear();
+    individualFiles.clear();
+    currentView.value = 'overview';
+    autoRenameDropped.value = false;
+
+    // Clear cached data file
+    await clearExtractedDataCache();
+
+    // Clear SharedPreferences (except settings)
+    final prefs = await SharedPreferences.getInstance();
+
+    // Remove folder and file data
+    await prefs.remove('selected_folder');
+    await prefs.remove('project_folders');
+    await prefs.remove('individual_files');
+    await prefs.remove('current_view');
+    await prefs.remove('currently_selected_folder');
+    await prefs.remove('auto_rename_dropped');
+
+    // Keep these settings:
+    // - openai_api_key
+    // - openai_model
+    // - filename_template
+
+    _logger.info('App data reset complete');
   }
 }
 

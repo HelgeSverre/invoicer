@@ -5,20 +5,11 @@ import 'package:csv/csv.dart';
 import 'package:excel/excel.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:invoicer/logger.dart';
 import 'package:invoicer/models.dart';
 import 'package:invoicer/models/export_settings.dart';
-import 'package:logger/logger.dart';
 
-final _logger = Logger(
-  printer: PrettyPrinter(
-    methodCount: 0,
-    errorMethodCount: 5,
-    lineLength: 80,
-    colors: true,
-    printEmojis: false,
-    dateTimeFormat: DateTimeFormat.onlyTimeAndSinceStart,
-  ),
-);
+final _logger = AppLogger('ExportService');
 
 class ExportService {
   /// Format line items according to the specified format
@@ -61,16 +52,14 @@ class ExportService {
     List<PdfDocument> documents, {
     ExportSettings? settings,
   }) async {
-    _logger
-        .i('Starting CSV export', error: {'documentCount': documents.length});
+    _logger.info('Exporting ${documents.length} invoices to CSV');
     settings ??= ExportSettings.defaultSettings;
     if (documents.isEmpty) {
-      _logger.w('No documents to export');
+      _logger.warning('No documents to export');
       throw Exception('No documents to export');
     }
 
     // Ask user where to save
-    _logger.d('Opening save file dialog');
     String? outputPath = await FilePicker.platform.saveFile(
       dialogTitle: 'Export to CSV',
       fileName:
@@ -80,10 +69,8 @@ class ExportService {
     );
 
     if (outputPath == null) {
-      _logger.d('Export cancelled by user');
       return null;
     }
-    _logger.d('Export path selected', error: {'path': outputPath});
 
     // Build CSV data
     List<List<dynamic>> rows = [];
@@ -143,7 +130,6 @@ class ExportService {
     }
 
     // Convert to CSV string with custom settings
-    _logger.d('Converting to CSV format', error: {'rowCount': rows.length});
     final converter = settings.alwaysQuote
         ? ListToCsvConverter(
             fieldDelimiter: settings.delimiter,
@@ -157,10 +143,9 @@ class ExportService {
     String csv = converter.convert(rows);
 
     // Write to file
-    _logger.d('Writing CSV to file');
     await File(outputPath).writeAsString(csv);
 
-    _logger.i('CSV export completed successfully', error: {'path': outputPath});
+    _logger.info('CSV export completed: $outputPath');
     return outputPath;
   }
 
@@ -169,16 +154,14 @@ class ExportService {
     List<PdfDocument> documents, {
     ExportSettings? settings,
   }) async {
-    _logger
-        .i('Starting JSON export', error: {'documentCount': documents.length});
+    _logger.info('Exporting ${documents.length} invoices to JSON');
     settings ??= ExportSettings.defaultSettings;
     if (documents.isEmpty) {
-      _logger.w('No documents to export');
+      _logger.warning('No documents to export');
       throw Exception('No documents to export');
     }
 
     // Ask user where to save
-    _logger.d('Opening save file dialog');
     String? outputPath = await FilePicker.platform.saveFile(
       dialogTitle: 'Export to JSON',
       fileName:
@@ -188,13 +171,10 @@ class ExportService {
     );
 
     if (outputPath == null) {
-      _logger.d('Export cancelled by user');
       return null;
     }
-    _logger.d('Export path selected', error: {'path': outputPath});
 
     // Build JSON data
-    _logger.d('Building JSON data structure');
     final exportData = {
       'exportDate': DateTime.now().toIso8601String(),
       'version': '1.0',
@@ -203,13 +183,11 @@ class ExportService {
     };
 
     // Write to file with pretty printing
-    _logger.d('Writing JSON to file');
     const encoder = JsonEncoder.withIndent('  ');
     String prettyJson = encoder.convert(exportData);
     await File(outputPath).writeAsString(prettyJson);
 
-    _logger
-        .i('JSON export completed successfully', error: {'path': outputPath});
+    _logger.info('JSON export completed: $outputPath');
     return outputPath;
   }
 
@@ -218,16 +196,14 @@ class ExportService {
     List<PdfDocument> documents, {
     ExportSettings? settings,
   }) async {
-    _logger
-        .i('Starting Excel export', error: {'documentCount': documents.length});
+    _logger.info('Exporting ${documents.length} invoices to Excel');
     settings ??= ExportSettings.defaultSettings;
     if (documents.isEmpty) {
-      _logger.w('No documents to export');
+      _logger.warning('No documents to export');
       throw Exception('No documents to export');
     }
 
     // Ask user where to save
-    _logger.d('Opening save file dialog');
     String? outputPath = await FilePicker.platform.saveFile(
       dialogTitle: 'Export to Excel',
       fileName:
@@ -237,35 +213,22 @@ class ExportService {
     );
 
     if (outputPath == null) {
-      _logger.d('Export cancelled by user');
       return null;
     }
-    _logger.d('Export path selected', error: {'path': outputPath});
 
     // Create Excel workbook
-    _logger.d('Creating Excel workbook');
     var excel = Excel.createExcel();
-
-    // Remove default sheet
     excel.delete('Sheet1');
-
-    // Create Summary sheet
-    _logger.d('Creating Summary sheet');
     _createSummarySheet(excel, documents);
-
-    // Create Items sheet
-    _logger.d('Creating Line Items sheet');
     _createItemsSheet(excel, documents);
 
     // Save file
-    _logger.d('Encoding and saving Excel file');
     var bytes = excel.encode();
     if (bytes != null) {
       await File(outputPath).writeAsBytes(bytes);
-      _logger.i('Excel export completed successfully',
-          error: {'path': outputPath, 'size': bytes.length});
+      _logger.info('Excel export completed: $outputPath');
     } else {
-      _logger.e('Failed to encode Excel file');
+      _logger.error('Failed to encode Excel file');
     }
 
     return outputPath;
