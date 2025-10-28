@@ -54,227 +54,174 @@ class _SettingsDialogState extends State<SettingsDialog> {
   @override
   Widget build(BuildContext context) {
     return MacosSheet(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const MacosIcon(CupertinoIcons.settings, size: 20),
-                const SizedBox(width: 8),
-                Text('Settings',
-                    style: MacosTheme.of(context).typography.title2),
-                const Spacer(),
-                MacosTooltip(
-                  message: 'Close',
-                  child: MacosIconButton(
-                    icon: const MacosIcon(CupertinoIcons.xmark),
-                    onPressed: () => Navigator.of(context).pop(),
+      child: SingleChildScrollView(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const MacosIcon(CupertinoIcons.settings, size: 20),
+                  const SizedBox(width: 8),
+                  Text('Settings',
+                      style: MacosTheme.of(context).typography.title2),
+                  const Spacer(),
+                  MacosTooltip(
+                    message: 'Close',
+                    child: MacosIconButton(
+                      icon: const MacosIcon(CupertinoIcons.xmark),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
+                ],
+              ),
+              const SizedBox(height: 24),
 
-            // API Key Section
-            Text(
-              'OpenAI API Key',
-              style: MacosTheme.of(context).typography.headline,
-            ),
-            const SizedBox(height: 8),
-            Watch(
-              (context) => MacosTextField(
-                controller: _apiKeyController,
-                placeholder: 'sk-...',
-                obscureText: _obscureApiKey,
-                prefix: MacosTooltip(
-                  message: 'Your OpenAI API key for processing receipts',
-                  child: const MacosIcon(CupertinoIcons.lock),
-                ),
-                suffix: MacosIconButton(
-                  icon: MacosIcon(
-                    _obscureApiKey
-                        ? CupertinoIcons.eye
-                        : CupertinoIcons.eye_slash,
-                    size: 18,
+              // API Key Section
+              Text(
+                'OpenAI API Key',
+                style: MacosTheme.of(context).typography.headline,
+              ),
+              const SizedBox(height: 8),
+              Watch(
+                (context) => MacosTextField(
+                  controller: _apiKeyController,
+                  placeholder: 'sk-...',
+                  obscureText: _obscureApiKey,
+                  prefix: MacosTooltip(
+                    message: 'Your OpenAI API key for processing receipts',
+                    child: const MacosIcon(CupertinoIcons.lock),
                   ),
-                  onPressed: () {
-                    setState(() {
-                      _obscureApiKey = !_obscureApiKey;
-                    });
-                  },
+                  suffix: MacosIconButton(
+                    icon: MacosIcon(
+                      _obscureApiKey
+                          ? CupertinoIcons.eye
+                          : CupertinoIcons.eye_slash,
+                      size: 18,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _obscureApiKey = !_obscureApiKey;
+                      });
+                    },
+                  ),
                 ),
               ),
-            ),
 
-            const SizedBox(height: 24),
+              const SizedBox(height: 24),
 
-            // Divider
-            Container(
-              height: 1,
-              color: MacosTheme.of(context).dividerColor,
-            ),
-            const SizedBox(height: 24),
+              // Divider
+              Container(
+                height: 1,
+                color: MacosTheme.of(context).dividerColor,
+              ),
+              const SizedBox(height: 24),
 
-            // AI Model Section
-            Text(
-              'AI Model',
-              style: MacosTheme.of(context).typography.headline,
-            ),
-            const SizedBox(height: 8),
-            MacosPopupButton<String>(
-              value: _selectedModel,
-              onChanged: (String? newValue) {
-                if (newValue != null) {
-                  setState(() {
-                    _selectedModel = newValue;
-                  });
-                }
-              },
-              items: _availableModels
-                  .map<MacosPopupMenuItem<String>>(
-                    (String value) => MacosPopupMenuItem<String>(
-                      value: value,
-                      child: Text(value),
-                    ),
-                  )
-                  .toList(),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Recommended: gpt-4.1-mini (fast, lower cost). gpt-4.1 (best quality). nano (smallest; may miss details).',
-              style: MacosTheme.of(context).typography.caption1.copyWith(
-                    color: CupertinoColors.systemGrey,
-                  ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Divider
-            Container(
-              height: 1,
-              color: MacosTheme.of(context).dividerColor,
-            ),
-            const SizedBox(height: 24),
-
-            // Filename Template Section
-            Text(
-              'Filename Template',
-              style: MacosTheme.of(context).typography.headline,
-            ),
-            const SizedBox(height: 8),
-            MacosTextField(
-              controller: _filenameTemplateController,
-              placeholder: '[YEAR]-[MONTH]-[DAY] - [VENDOR].pdf',
-              prefix: const MacosIcon(CupertinoIcons.doc_text),
-            ),
-            if (_templateError != null) ...[
-              const SizedBox(height: 4),
+              // AI Model Section
               Text(
-                _templateError!,
+                'AI Model',
+                style: MacosTheme.of(context).typography.headline,
+              ),
+              const SizedBox(height: 8),
+              MacosPopupButton<String>(
+                value: _selectedModel,
+                onChanged: (String? newValue) {
+                  if (newValue != null) {
+                    setState(() {
+                      _selectedModel = newValue;
+                    });
+                  }
+                },
+                items: _availableModels
+                    .map<MacosPopupMenuItem<String>>(
+                      (String value) => MacosPopupMenuItem<String>(
+                        value: value,
+                        child: Text(value),
+                      ),
+                    )
+                    .toList(),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Recommended: gpt-4.1-mini (fast, lower cost). gpt-4.1 (best quality). nano (smallest; may miss details).',
                 style: MacosTheme.of(context).typography.caption1.copyWith(
-                      color: CupertinoColors.systemRed,
+                      color: CupertinoColors.systemGrey,
                     ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Divider
+              Container(
+                height: 1,
+                color: MacosTheme.of(context).dividerColor,
+              ),
+              const SizedBox(height: 24),
+
+              // Filename Template Section
+              Text(
+                'Filename Template',
+                style: MacosTheme.of(context).typography.headline,
+              ),
+              const SizedBox(height: 8),
+              MacosTextField(
+                controller: _filenameTemplateController,
+                placeholder: '[YEAR]-[MONTH]-[DAY] - [VENDOR].pdf',
+                prefix: const MacosIcon(CupertinoIcons.doc_text),
+              ),
+              if (_templateError != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  _templateError!,
+                  style: MacosTheme.of(context).typography.caption1.copyWith(
+                        color: CupertinoColors.systemRed,
+                      ),
+                ),
+              ],
+              const SizedBox(height: 8),
+              Text(
+                'Available placeholders: ${FilenameTemplateService.getAvailablePlaceholders().map((p) => p.name).join(', ')}',
+                style: MacosTheme.of(context).typography.caption1.copyWith(
+                      color: CupertinoColors.systemGrey,
+                    ),
+              ),
+              const SizedBox(height: 4),
+              _buildPlaceholderHelp(context),
+
+              const SizedBox(height: 24),
+
+              // Action Buttons
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  PushButton(
+                    controlSize: ControlSize.large,
+                    secondary: true,
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Cancel'),
+                  ),
+                  const SizedBox(width: 12),
+                  PushButton(
+                    controlSize: ControlSize.large,
+                    onPressed: _templateError == null
+                        ? () {
+                            widget.appState.apiKey.value =
+                                _apiKeyController.text;
+                            widget.appState.aiModel.value = _selectedModel;
+                            widget.appState.filenameTemplate.value =
+                                _filenameTemplateController.text;
+                            widget.appState.saveSettings();
+                            Navigator.of(context).pop();
+                          }
+                        : null,
+                    child: const Text('Save'),
+                  ),
+                ],
               ),
             ],
-            const SizedBox(height: 8),
-            Text(
-              'Available placeholders: ${FilenameTemplateService.getAvailablePlaceholders().map((p) => p.name).join(', ')}',
-              style: MacosTheme.of(context).typography.caption1.copyWith(
-                    color: CupertinoColors.systemGrey,
-                  ),
-            ),
-            const SizedBox(height: 4),
-            _buildPlaceholderHelp(context),
-
-            const SizedBox(height: 24),
-
-            // Divider
-            Container(
-              height: 1,
-              color: MacosTheme.of(context).dividerColor,
-            ),
-            const SizedBox(height: 24),
-
-            // Auto-rename dropped files
-            Text(
-              'Dropzone Behavior',
-              style: MacosTheme.of(context).typography.headline,
-            ),
-            const SizedBox(height: 12),
-            Watch((context) {
-              return GestureDetector(
-                onTap: () {
-                  widget.appState.autoRenameDropped.value =
-                      !widget.appState.autoRenameDropped.value;
-                },
-                child: Row(
-                  children: [
-                    MacosCheckbox(
-                      value: widget.appState.autoRenameDropped.value,
-                      onChanged: (value) {
-                        widget.appState.autoRenameDropped.value = value;
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Automatically rename dropped files',
-                            style: MacosTheme.of(context).typography.body,
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'When enabled, files dropped on the Overview will be processed and renamed immediately without showing the detail dialog.',
-                            style: MacosTheme.of(context)
-                                .typography
-                                .caption1
-                                .copyWith(
-                                  color: CupertinoColors.systemGrey,
-                                ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-
-            const SizedBox(height: 24),
-
-            // Action Buttons
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                PushButton(
-                  controlSize: ControlSize.large,
-                  secondary: true,
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cancel'),
-                ),
-                const SizedBox(width: 12),
-                PushButton(
-                  controlSize: ControlSize.large,
-                  onPressed: _templateError == null
-                      ? () {
-                          widget.appState.apiKey.value = _apiKeyController.text;
-                          widget.appState.aiModel.value = _selectedModel;
-                          widget.appState.filenameTemplate.value =
-                              _filenameTemplateController.text;
-                          widget.appState.saveSettings();
-                          Navigator.of(context).pop();
-                        }
-                      : null,
-                  child: const Text('Save'),
-                ),
-              ],
-            ),
-          ],
+          ),
         ),
       ),
     );
