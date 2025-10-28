@@ -24,7 +24,8 @@ class FilenameTemplateService {
 
     // Vendor replacement
     if (document.vendor != null) {
-      result = result.replaceAll('[VENDOR]', _sanitizeFilename(document.vendor!));
+      result =
+          result.replaceAll('[VENDOR]', _sanitizeFilename(document.vendor!));
     } else {
       result = result.replaceAll('[VENDOR]', 'Unknown');
     }

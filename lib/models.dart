@@ -217,7 +217,8 @@ class PdfDocument {
       name: json['name'] ?? '',
       path: json['path'] ?? '',
       items: (json['items'] as List<dynamic>?)
-              ?.map((item) => ReceiptItem.fromJson(item as Map<String, dynamic>))
+              ?.map(
+                  (item) => ReceiptItem.fromJson(item as Map<String, dynamic>))
               .toList() ??
           [],
       vendor: json['vendor'],
