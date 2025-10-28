@@ -9,10 +9,22 @@ import 'package:invoicer/dialogs/file_detail_dialog.dart';
 import 'package:invoicer/extractor.dart';
 import 'package:invoicer/models.dart';
 import 'package:invoicer/services/filename_template_service.dart';
+import 'package:logger/logger.dart';
 import 'package:macos_ui/macos_ui.dart';
 import 'package:path/path.dart' as path;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:signals/signals.dart';
+
+final _logger = Logger(
+  printer: PrettyPrinter(
+    methodCount: 0,
+    errorMethodCount: 5,
+    lineLength: 80,
+    colors: true,
+    printEmojis: false,
+    dateTimeFormat: DateTimeFormat.onlyTimeAndSinceStart,
+  ),
+);
 
 class AppState {
   static final AppState _instance = AppState._internal();
@@ -29,7 +41,8 @@ class AppState {
   final currentlySelectedFolder = signal<ProjectFolder?>(null);
 
   // UI state
-  final currentView = signal<String>('overview'); // 'overview', 'folder', or 'all_files'
+  final currentView =
+      signal<String>('overview'); // 'overview', 'folder', or 'all_files'
 
   final pdfFiles = listSignal<PdfDocument>([]);
   final individualFiles = listSignal<PdfDocument>(
@@ -38,19 +51,18 @@ class AppState {
   final apiKey = signal<String>("");
   final aiModel = signal<String>("gpt-4.1-mini");
   final isProcessingAll = signal<bool>(false);
-  final filenameTemplate = signal<String>("[YEAR]-[MONTH]-[DAY] - [VENDOR].pdf");
+  final filenameTemplate =
+      signal<String>("[YEAR]-[MONTH]-[DAY] - [VENDOR].pdf");
   final autoRenameDropped = signal<bool>(false);
 
   Future<void> loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
-    apiKey.value =
-        dotenv.maybeGet(
+    apiKey.value = dotenv.maybeGet(
           'OPENAI_API_KEY',
           fallback: prefs.getString('openai_api_key'),
         ) ??
         "";
-    aiModel.value =
-        dotenv.maybeGet(
+    aiModel.value = dotenv.maybeGet(
           'OPENAI_MODEL',
           fallback: prefs.getString('openai_model'),
         ) ??
@@ -276,11 +288,21 @@ class AppState {
   }
 
   Future<void> processFile(PdfDocument file) async {
+    _logger.i('Starting file processing', error: {
+      'fileName': file.name,
+      'filePath': file.path,
+      'source': file.source,
+    });
+
     // Find the file in the appropriate list
     int folderIndex = pdfFiles.indexOf(file);
     int individualIndex = individualFiles.indexOf(file);
 
     if ((folderIndex == -1 && individualIndex == -1) || file.isProcessing) {
+      _logger.w('File not found in lists or already processing', error: {
+        'fileName': file.name,
+        'isProcessing': file.isProcessing,
+      });
       return;
     }
 
@@ -296,13 +318,16 @@ class AppState {
 
     try {
       // Extract text from PDF
+      _logger.d('Extracting text from PDF');
       final textContent = await Extractor.extractTextFromPDF(file.path);
 
       if (textContent.trim().isEmpty) {
+        _logger.e('No text found in PDF', error: {'fileName': file.name});
         throw Exception('No text found in PDF');
       }
 
       // Analyze with OpenAI
+      _logger.d('Analyzing with OpenAI', error: {'model': aiModel.value});
       final result = await Extractor.extractReceiptData(
         textContent,
         apiKey.value,
@@ -310,8 +335,7 @@ class AppState {
       );
 
       final updatedFile = file.copyWith(
-        items:
-            (result['items'] as List<dynamic>?)
+        items: (result['items'] as List<dynamic>?)
                 ?.map((item) => ReceiptItem.fromJson(item))
                 .toList() ??
             [],
@@ -337,9 +361,17 @@ class AppState {
         individualFiles[individualIndex] = updatedFile;
       }
 
+      _logger.i('File processing completed successfully', error: {
+        'fileName': file.name,
+        'vendor': updatedFile.vendor,
+        'totalAmount': updatedFile.totalAmount,
+        'itemCount': updatedFile.items.length,
+      });
+
       // Save extracted data to persistent storage
       await saveExtractedData();
-    } catch (e) {
+    } catch (e, stackTrace) {
+      _logger.e('File processing failed', error: e, stackTrace: stackTrace);
       final errorFile = file.copyWith(error: e.toString(), isProcessing: false);
 
       // Update the correct list
@@ -352,13 +384,23 @@ class AppState {
   }
 
   Future<void> processAllFiles() async {
-    if (isProcessingAll.value) return;
+    if (isProcessingAll.value) {
+      _logger.w('Batch processing already in progress');
+      return;
+    }
+
+    _logger.i('Starting batch file processing', error: {
+      'fileCount': pdfFiles.length,
+    });
 
     isProcessingAll.value = true;
 
     try {
       final futures = pdfFiles.map((file) => processFile(file)).toList();
       await Future.wait(futures);
+      _logger.i('Batch file processing completed');
+    } catch (e, stackTrace) {
+      _logger.e('Batch processing error', error: e, stackTrace: stackTrace);
     } finally {
       isProcessingAll.value = false;
     }
@@ -407,7 +449,6 @@ class AppState {
 
       // Persist the change
       await saveSettings();
-
     } on FileSystemException catch (e) {
       // Rollback on filesystem error
       pdfFiles[index] = originalFile;
@@ -418,10 +459,10 @@ class AppState {
         _showRenameErrorDialog(
           context,
           'Failed to rename file: ${e.message}\n\n'
-              'Possible causes:\n'
-              '• File is open in another application\n'
-              '• Insufficient permissions\n'
-              '• File is on a read-only volume',
+          'Possible causes:\n'
+          '• File is open in another application\n'
+          '• Insufficient permissions\n'
+          '• File is on a read-only volume',
         );
       }
     } catch (e) {
@@ -457,7 +498,8 @@ class AppState {
 
   // Data persistence methods (JSON file-based)
   String _getDataFilePath() {
-    final homeDir = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
+    final homeDir =
+        Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
     if (homeDir == null) {
       throw Exception('Cannot determine user home directory');
     }
@@ -465,7 +507,8 @@ class AppState {
   }
 
   Future<void> _ensureDataDirectoryExists() async {
-    final homeDir = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
+    final homeDir =
+        Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
     if (homeDir == null) {
       throw Exception('Cannot determine user home directory');
     }
@@ -562,7 +605,8 @@ class AppState {
           }
         } else {
           // Individual file
-          final index = individualFiles.indexWhere((f) => f.path == processed.path);
+          final index =
+              individualFiles.indexWhere((f) => f.path == processed.path);
           if (index != -1) {
             individualFiles[index] = processed;
             restoredCount++;
@@ -571,7 +615,8 @@ class AppState {
       }
 
       final lastUpdated = data['lastUpdated'] as String?;
-      print('Restored $restoredCount processed files from cache (last updated: $lastUpdated)');
+      print(
+          'Restored $restoredCount processed files from cache (last updated: $lastUpdated)');
     } catch (e) {
       print('Error loading extracted data: $e');
       // Don't throw - app should still work without cache
@@ -593,6 +638,7 @@ class AppState {
 
   // Individual file management methods
   Future<void> addIndividualFiles() async {
+    _logger.i('Opening file picker for individual files');
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
@@ -601,14 +647,18 @@ class AppState {
       );
 
       if (result != null) {
+        _logger.i('Files selected', error: {'fileCount': result.files.length});
         for (PlatformFile file in result.files) {
           if (file.path != null) {
             await _addIndividualFile(file.path!);
           }
         }
+      } else {
+        _logger.d('File picker cancelled by user');
       }
-    } catch (e) {
-      print('Error adding individual files: $e');
+    } catch (e, stackTrace) {
+      _logger.e('Error adding individual files',
+          error: e, stackTrace: stackTrace);
     }
   }
 
@@ -617,23 +667,28 @@ class AppState {
   }
 
   Future<void> _addIndividualFile(String filePath) async {
+    _logger.d('Adding individual file', error: {'filePath': filePath});
+
     // Check if file already exists
     final fileName = path.basename(filePath);
     final existsInIndividual = individualFiles.any((f) => f.path == filePath);
     final existsInFolder = pdfFiles.any((f) => f.path == filePath);
 
     if (existsInIndividual || existsInFolder) {
+      _logger.d('File already exists in list', error: {'fileName': fileName});
       return; // File already added
     }
 
     // Verify it's a PDF file
     if (!filePath.toLowerCase().endsWith('.pdf')) {
+      _logger.w('File is not a PDF', error: {'filePath': filePath});
       return;
     }
 
     // Verify file exists
     final file = File(filePath);
     if (!file.existsSync()) {
+      _logger.w('File does not exist', error: {'filePath': filePath});
       return;
     }
 
@@ -644,6 +699,8 @@ class AppState {
     );
 
     individualFiles.add(pdfDoc);
+    _logger
+        .i('Individual file added successfully', error: {'fileName': fileName});
     await saveSettings();
   }
 
@@ -658,52 +715,78 @@ class AppState {
   }
 
   /// Process a dropped file with optional auto-rename
-  Future<void> processDroppedFile(String filePath, BuildContext context) async {
+  Future<void> processDroppedFile(
+    String filePath,
+    BuildContext context, {
+    bool showDialog = true,
+  }) async {
+    _logger.i('Processing dropped file', error: {
+      'filePath': filePath,
+      'autoRename': autoRenameDropped.value,
+      'showDialog': showDialog,
+    });
+
     // Add the file as an individual file
     await _addIndividualFile(filePath);
+    _logger.d('File added to individual files list');
 
     // Find the newly added file
     final file = individualFiles.firstWhere((f) => f.path == filePath);
 
     // Process the file with AI
+    _logger.d('Starting AI processing for dropped file');
     await processFile(file);
 
     // Check if processing was successful
     final processedFile = individualFiles.firstWhere((f) => f.path == filePath);
 
     if (processedFile.vendor != null && context.mounted) {
-      if (autoRenameDropped.value) {
-        // Auto-rename without showing dialog
-        await renameFile(processedFile, context);
+      _logger.i('File processing successful', error: {
+        'vendor': processedFile.vendor,
+        'willAutoRename': autoRenameDropped.value,
+      });
 
-        // Show success notification
-        if (context.mounted) {
-          showMacosAlertDialog(
-            context: context,
-            builder: (context) => MacosAlertDialog(
-              appIcon: const MacosIcon(CupertinoIcons.checkmark_circle_fill),
-              title: const Text('File Processed'),
-              message: Text(
-                'Successfully processed and renamed:\n${processedFile.vendor}',
-              ),
-              primaryButton: PushButton(
-                controlSize: ControlSize.large,
-                child: const Text('OK'),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ),
-          );
-        }
-      } else {
-        // Show file detail dialog for manual review
-        await showMacosSheet(
-          context: context,
-          barrierDismissible: true,
-          builder: (context) => FileDetailDialog(initialFile: processedFile),
-        );
+      // Auto-rename if enabled
+      if (autoRenameDropped.value) {
+        _logger.d('Auto-renaming dropped file');
+        await renameFile(processedFile, context);
       }
-    } else if (processedFile.error != null && context.mounted) {
-      // Show error dialog
+
+      // Only show dialogs if showDialog is true
+      if (showDialog) {
+        if (autoRenameDropped.value) {
+          // Show success notification for single file
+          if (context.mounted) {
+            showMacosAlertDialog(
+              context: context,
+              builder: (context) => MacosAlertDialog(
+                appIcon: const MacosIcon(CupertinoIcons.checkmark_circle_fill),
+                title: const Text('File Processed'),
+                message: Text(
+                  'Successfully processed and renamed:\n${processedFile.vendor}',
+                ),
+                primaryButton: PushButton(
+                  controlSize: ControlSize.large,
+                  child: const Text('OK'),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ),
+            );
+          }
+        } else {
+          // Show file detail dialog for manual review (single file only)
+          if (context.mounted) {
+            await showMacosSheet(
+              context: context,
+              barrierDismissible: true,
+              builder: (context) =>
+                  FileDetailDialog(initialFile: processedFile),
+            );
+          }
+        }
+      }
+    } else if (processedFile.error != null && showDialog && context.mounted) {
+      // Only show error dialog if showDialog is true
       showMacosAlertDialog(
         context: context,
         builder: (context) => MacosAlertDialog(

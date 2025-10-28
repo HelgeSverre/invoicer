@@ -8,7 +8,7 @@ import 'package:invoicer/dialogs/settings_dialog.dart';
 import 'package:invoicer/state.dart';
 import 'package:invoicer/utils.dart';
 import 'package:invoicer/views/files_view.dart';
-import 'package:invoicer/views/folders_view.dart';
+import 'package:invoicer/views/overview_view.dart';
 import 'package:macos_ui/macos_ui.dart';
 import 'package:signals/signals_flutter.dart' hide signal;
 
@@ -114,11 +114,30 @@ class _InvoicerMainScreenState extends State<InvoicerMainScreen> {
     exit(0);
   }
 
+  int _getSidebarIndex(String currentView) {
+    // Map currentView to sidebar index
+    // 0: Overview
+    // 1+: Folders (dynamic)
+    // Last: All Files
+    if (currentView == 'overview') return 0;
+    if (currentView == 'all_files') return 1 + appState.projectFolders.length;
+
+    // Check if it's a folder view
+    final folderIndex = appState.projectFolders.indexWhere(
+      (f) => currentView == 'folder_${f.path}',
+    );
+    if (folderIndex != -1) {
+      return 1 + folderIndex;
+    }
+
+    return 0; // Default to overview
+  }
+
   @override
   Widget build(BuildContext context) {
     return Watch((context) {
       final currentView = appState.currentView.value;
-      final sidebarIndex = currentView == 'folders' ? 0 : 1;
+      final sidebarIndex = _getSidebarIndex(currentView);
 
       return PlatformMenuBar(
         menus: [
@@ -179,32 +198,79 @@ class _InvoicerMainScreenState extends State<InvoicerMainScreen> {
             child: MacosWindow(
               disableWallpaperTinting: true,
               sidebar: Sidebar(
-                minWidth: 200,
+                minWidth: 220,
                 builder: (context, scrollController) {
-                  return SidebarItems(
-                    currentIndex: sidebarIndex,
-                    scrollController: scrollController,
-                    onChanged: (i) {
-                      appState.currentView.value = i == 0 ? 'folders' : 'files';
-                    },
-                    items: const [
-                      SidebarItem(section: true, label: Text('Documents')),
-                      SidebarItem(
-                        leading: MacosIcon(CupertinoIcons.folder),
-                        label: Text('Folders'),
+                  return Watch((context) {
+                    final folders = appState.projectFolders;
+
+                    // Build sidebar items
+                    final items = <SidebarItem>[
+                      // Overview section
+                      const SidebarItem(section: true, label: Text('Overview')),
+                      const SidebarItem(
+                        leading: MacosIcon(CupertinoIcons.chart_bar_square),
+                        label: Text('Dashboard'),
                       ),
+
+                      // Projects section (folders)
+                      const SidebarItem(section: true, label: Text('Projects')),
+                      ...folders.map((folder) => SidebarItem(
+                            leading:
+                                const MacosIcon(CupertinoIcons.folder_fill),
+                            label: Text(folder.name),
+                            trailing: Text(
+                              '${folder.fileCount}',
+                              style: const TextStyle(
+                                color: CupertinoColors.systemGrey,
+                                fontSize: 12,
+                              ),
+                            ),
+                          )),
+
+                      // All Files section
+                      const SidebarItem(
+                          section: true, label: Text('All Files')),
                       SidebarItem(
-                        leading: MacosIcon(CupertinoIcons.doc),
-                        label: Text('Files'),
+                        leading: const MacosIcon(CupertinoIcons.doc_on_doc),
+                        label: const Text('All Files'),
+                        trailing: Text(
+                          '${appState.allFiles.length}',
+                          style: const TextStyle(
+                            color: CupertinoColors.systemGrey,
+                            fontSize: 12,
+                          ),
+                        ),
                       ),
-                    ],
-                  );
+                    ];
+
+                    return SidebarItems(
+                      currentIndex: sidebarIndex,
+                      scrollController: scrollController,
+                      onChanged: (i) {
+                        // Calculate which view to show based on index
+                        if (i == 0) {
+                          // Overview
+                          appState.currentView.value = 'overview';
+                        } else if (i <= folders.length) {
+                          // Folder (index 1 to folders.length)
+                          final folderIndex = i - 1;
+                          if (folderIndex < folders.length) {
+                            final folder = folders[folderIndex];
+                            appState.selectFolder(folder);
+                            appState.currentView.value =
+                                'folder_${folder.path}';
+                          }
+                        } else {
+                          // All Files
+                          appState.currentView.value = 'all_files';
+                        }
+                      },
+                      items: items,
+                    );
+                  });
                 },
               ),
-              child: IndexedStack(
-                index: sidebarIndex,
-                children: [_buildFoldersView(), _buildFilesView()],
-              ),
+              child: _buildMainContent(),
             ),
           ),
         ),
@@ -212,24 +278,41 @@ class _InvoicerMainScreenState extends State<InvoicerMainScreen> {
     });
   }
 
-  Widget _buildFoldersView() {
+  Widget _buildMainContent() {
+    return Watch((context) {
+      final currentView = appState.currentView.value;
+
+      if (currentView == 'overview') {
+        return _buildOverviewView();
+      } else if (currentView == 'all_files') {
+        return _buildAllFilesView();
+      } else if (currentView.startsWith('folder_')) {
+        return _buildFilesView();
+      }
+
+      // Default to overview
+      return _buildOverviewView();
+    });
+  }
+
+  Widget _buildOverviewView() {
     return MacosScaffold(
       toolBar: ToolBar(
         centerTitle: false,
-        title: const Text('Invoicer - Folders'),
+        title: const Text('Invoicer - Overview'),
         actions: [
           ToolBarIconButton(
             label: 'Settings',
             icon: const MacosIcon(CupertinoIcons.settings),
             onPressed: _openSettings,
-            showLabel: true,
+            showLabel: false,
             tooltipMessage: 'Open application settings (⌘,)',
           ),
           ToolBarIconButton(
             label: 'Add Folder',
             icon: const MacosIcon(CupertinoIcons.folder_badge_plus),
             onPressed: appState.pickAndAddFolder,
-            showLabel: true,
+            showLabel: false,
             tooltipMessage: 'Add a folder containing PDF receipts',
           ),
         ],
@@ -237,11 +320,71 @@ class _InvoicerMainScreenState extends State<InvoicerMainScreen> {
       children: [
         ContentArea(
           builder: (context, scrollController) {
-            return FoldersView(appState: appState);
+            return OverviewView(appState: appState);
           },
         ),
       ],
     );
+  }
+
+  Widget _buildAllFilesView() {
+    return Watch((context) {
+      final hasFiles = appState.allFiles.isNotEmpty;
+      final isProcessing = appState.isProcessingAll.value;
+
+      return MacosScaffold(
+        toolBar: ToolBar(
+          centerTitle: false,
+          title: const Text('Invoicer - All Files'),
+          actions: [
+            ToolBarIconButton(
+              label: 'Settings',
+              icon: const MacosIcon(CupertinoIcons.settings),
+              onPressed: _openSettings,
+              showLabel: false,
+              tooltipMessage: 'Open application settings (⌘,)',
+            ),
+            ToolBarIconButton(
+              label: 'Add Files',
+              icon: const MacosIcon(CupertinoIcons.plus),
+              onPressed: appState.addIndividualFiles,
+              showLabel: false,
+              tooltipMessage: 'Add individual PDF files',
+            ),
+            if (hasFiles) ...[
+              ToolBarIconButton(
+                label: 'Process All',
+                icon: isProcessing
+                    ? const MacosIcon(CupertinoIcons.clock)
+                    : const MacosIcon(CupertinoIcons.play_fill),
+                onPressed: isProcessing
+                    ? null
+                    : () {
+                        // Process all files from all sources
+                        for (var file in appState.allFiles) {
+                          appState.processFile(file);
+                        }
+                      },
+                showLabel: false,
+                tooltipMessage: isProcessing
+                    ? 'Processing all files...'
+                    : 'Process all PDF files',
+              ),
+            ],
+          ],
+        ),
+        children: [
+          ContentArea(
+            builder: (context, scrollController) {
+              return FilesView(
+                appState: appState,
+                showAllFiles: true,
+              );
+            },
+          ),
+        ],
+      );
+    });
   }
 
   Widget _buildFilesView() {
@@ -253,7 +396,7 @@ class _InvoicerMainScreenState extends State<InvoicerMainScreen> {
       return MacosScaffold(
         toolBar: ToolBar(
           centerTitle: false,
-          title: Text('Invoicer'),
+          title: const Text('Invoicer'),
           actions: [
             ToolBarIconButton(
               label: 'Settings',
@@ -296,7 +439,10 @@ class _InvoicerMainScreenState extends State<InvoicerMainScreen> {
         children: [
           ContentArea(
             builder: (context, scrollController) {
-              return FilesView(appState: appState);
+              return FilesView(
+                appState: appState,
+                showAllFiles: false,
+              );
             },
           ),
         ],

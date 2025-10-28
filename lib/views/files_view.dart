@@ -12,8 +12,13 @@ import 'package:signals/signals_flutter.dart';
 
 class FilesView extends StatefulWidget {
   final AppState appState;
+  final bool showAllFiles;
 
-  const FilesView({super.key, required this.appState});
+  const FilesView({
+    super.key,
+    required this.appState,
+    this.showAllFiles = false,
+  });
 
   @override
   State<FilesView> createState() => _FilesViewState();
@@ -24,13 +29,16 @@ class _FilesViewState extends State<FilesView> {
   Widget build(BuildContext context) {
     return Watch((context) {
       final currentFolder = widget.appState.currentlySelectedFolder.value;
-      final allFiles = widget.appState.allFiles;
+      // Use all files if showAllFiles is true, otherwise use pdfFiles from current folder
+      final files = widget.showAllFiles
+          ? widget.appState.allFiles
+          : widget.appState.pdfFiles;
 
-      if (allFiles.isEmpty && currentFolder == null) {
+      if (files.isEmpty && currentFolder == null && !widget.showAllFiles) {
         return _buildEmptyState(context);
       }
 
-      if (allFiles.isEmpty) {
+      if (files.isEmpty) {
         return _buildNoFilesState(context, currentFolder);
       }
 
@@ -41,20 +49,20 @@ class _FilesViewState extends State<FilesView> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Current folder info (if applicable)
-            if (currentFolder != null) ...[
+            if (currentFolder != null && !widget.showAllFiles) ...[
               _buildCurrentFolderInfo(context, currentFolder),
               const SizedBox(height: 16),
             ],
 
             // Export Toolbar
-            _buildExportToolbar(context, allFiles),
+            _buildExportToolbar(context, files),
             const SizedBox(height: 16),
 
             // Table Header
             _buildTableHeader(context),
 
             // Table Rows
-            ...allFiles.asMap().entries.map((
+            ...files.asMap().entries.map((
               MapEntry<int, PdfDocument> entry,
             ) {
               return _buildFileRow(context, entry.key, entry.value);
@@ -119,8 +127,8 @@ class _FilesViewState extends State<FilesView> {
                         : 'Folder')
                     : 'Individual',
                 style: MacosTheme.of(context).typography.body.copyWith(
-                  color: CupertinoColors.systemGrey,
-                ),
+                      color: CupertinoColors.systemGrey,
+                    ),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -205,8 +213,7 @@ class _FilesViewState extends State<FilesView> {
                       message: 'Rename this file',
                       child: MacosIconButton(
                         padding: EdgeInsets.zero,
-                        icon: const MacosIcon(CupertinoIcons.pencil,
-                            size: 16),
+                        icon: const MacosIcon(CupertinoIcons.pencil, size: 16),
                         onPressed: () => widget.appState.renameFile(
                           file,
                           context,
