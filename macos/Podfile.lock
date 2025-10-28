@@ -1,6 +1,8 @@
 PODS:
   - appkit_ui_element_colors (1.0.0):
     - FlutterMacOS
+  - desktop_drop (0.0.1):
+    - FlutterMacOS
   - device_info_plus (0.0.1):
     - FlutterMacOS
   - file_picker (0.0.1):
@@ -20,6 +22,7 @@ PODS:
 
 DEPENDENCIES:
   - appkit_ui_element_colors (from `Flutter/ephemeral/.symlinks/plugins/appkit_ui_element_colors/macos`)
+  - desktop_drop (from `Flutter/ephemeral/.symlinks/plugins/desktop_drop/macos`)
   - device_info_plus (from `Flutter/ephemeral/.symlinks/plugins/device_info_plus/macos`)
   - file_picker (from `Flutter/ephemeral/.symlinks/plugins/file_picker/macos`)
   - FlutterMacOS (from `Flutter/ephemeral`)
@@ -32,6 +35,8 @@ DEPENDENCIES:
 EXTERNAL SOURCES:
   appkit_ui_element_colors:
     :path: Flutter/ephemeral/.symlinks/plugins/appkit_ui_element_colors/macos
+  desktop_drop:
+    :path: Flutter/ephemeral/.symlinks/plugins/desktop_drop/macos
   device_info_plus:
     :path: Flutter/ephemeral/.symlinks/plugins/device_info_plus/macos
   file_picker:
@@ -51,6 +56,7 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   appkit_ui_element_colors: bb247a2d02b8313cc47e1b83be48d996034c4001
+  desktop_drop: 69eeff437544aa619c8db7f4481b3a65f7696898
   device_info_plus: 1b14eed9bf95428983aed283a8d51cce3d8c4215
   file_picker: e716a70a9fe5fd9e09ebc922d7541464289443af
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
