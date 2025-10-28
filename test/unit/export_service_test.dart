@@ -204,8 +204,8 @@ void main() {
       );
     });
 
-    test('note: full JSON export tests require FilePicker mocking', () {
-    }, skip: 'Requires FilePicker mocking infrastructure');
+    test('note: full JSON export tests require FilePicker mocking', () {},
+        skip: 'Requires FilePicker mocking infrastructure');
   });
 
   group('ExportService.exportToExcel', () {
@@ -226,8 +226,8 @@ void main() {
       );
     });
 
-    test('note: full Excel export tests require FilePicker mocking', () {
-    }, skip: 'Requires FilePicker mocking infrastructure');
+    test('note: full Excel export tests require FilePicker mocking', () {},
+        skip: 'Requires FilePicker mocking infrastructure');
   });
 
   group('ExportSettings', () {

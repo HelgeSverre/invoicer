@@ -7,7 +7,8 @@ void main() {
   group('FilenameTemplateService.applyTemplate', () {
     test('replaces all placeholders correctly', () {
       // Arrange
-      const template = '[YEAR]-[MONTH]-[DAY] - [VENDOR] - [CURRENCY] [TOTAL].pdf';
+      const template =
+          '[YEAR]-[MONTH]-[DAY] - [VENDOR] - [CURRENCY] [TOTAL].pdf';
       final document = TestData.createPdfDocument(
         vendor: 'Acme Corp',
         invoiceDate: DateTime(2024, 1, 15),
@@ -35,7 +36,8 @@ void main() {
 
       // Assert
       final now = DateTime.now();
-      final expectedDatePart = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      final expectedDatePart =
+          '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
       expect(result, contains(expectedDatePart));
       expect(result, contains('Test Vendor'));
     });

@@ -18,13 +18,15 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  testWidgets('InvoicerApp widget can be instantiated', (WidgetTester tester) async {
+  testWidgets('InvoicerApp widget can be instantiated',
+      (WidgetTester tester) async {
     // Just verify the widget can be created (no actual rendering)
     const app = InvoicerApp();
     expect(app, isA<InvoicerApp>());
   });
 
-  testWidgets('MacosApp builds with correct theme', (WidgetTester tester) async {
+  testWidgets('MacosApp builds with correct theme',
+      (WidgetTester tester) async {
     // Build a minimal version to test structure
     await tester.pumpWidget(
       MacosApp(

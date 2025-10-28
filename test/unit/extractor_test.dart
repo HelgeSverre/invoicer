@@ -1,25 +1,9 @@
-import 'dart:convert';
-import 'dart:io';
-
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:invoicer/extractor.dart';
-import 'package:mocktail/mocktail.dart';
-
-import '../helpers/mocks.dart';
-import '../helpers/test_data.dart';
 
 void main() {
-  setUpAll(() {
-    registerMockFallbacks();
-  });
-
   group('Extractor.extractReceiptData', () {
-    late MockDio mockDio;
-
-    setUp(() {
-      mockDio = MockDio();
-    });
 
     test('throws exception when API key is empty', () async {
       // Arrange
@@ -40,29 +24,13 @@ void main() {
     });
 
     test('successfully extracts invoice data with valid API key', () async {
-      // Arrange
-      final sampleText = TestData.sampleInvoiceText;
-      const apiKey = 'test-api-key';
-
-      final mockResponse = Response(
-        statusCode: 200,
-        data: TestData.createOpenAIResponse(),
-        requestOptions: RequestOptions(path: ''),
-      );
-
-      // Mock the Dio client - Note: This test requires refactoring Extractor
-      // to allow dependency injection of the Dio client.
-      // For now, this test demonstrates the expected behavior.
-
-      // Act
-      // final result = await Extractor.extractReceiptData(sampleText, apiKey);
-
-      // Assert
-      // expect(result['vendor'], 'ACME Corporation');
-      // expect(result['total_amount'], 138.0);
-      // expect(result['invoice_date'], '2024-01-15');
-
-      // Skip this test until Extractor is refactored to accept Dio injection
+      // This test requires refactoring Extractor to allow dependency injection
+      // of the Dio client for proper mocking.
+      //
+      // Expected behavior:
+      // - Should accept API key and invoice text
+      // - Should return structured data matching the OpenAI response schema
+      // - Should extract vendor, total_amount, invoice_date, etc.
     }, skip: 'Requires Extractor refactoring for dependency injection');
 
     test('retries on 429 rate limit error with exponential backoff', () async {
@@ -128,7 +96,8 @@ void main() {
       expect(dio, isA<Dio>());
       expect(dio.interceptors, isNotEmpty);
       expect(
-        dio.interceptors.any((i) => i.toString().contains('DioCacheInterceptor')),
+        dio.interceptors
+            .any((i) => i.toString().contains('DioCacheInterceptor')),
         isTrue,
         reason: 'Should have DioCacheInterceptor configured',
       );
