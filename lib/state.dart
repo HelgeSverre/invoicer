@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:invoicer/dialogs/file_detail_dialog.dart';
 import 'package:invoicer/extractor.dart';
 import 'package:invoicer/models.dart';
 import 'package:invoicer/services/filename_template_service.dart';
@@ -698,10 +699,7 @@ class AppState {
         await showMacosSheet(
           context: context,
           barrierDismissible: true,
-          builder: (context) {
-            // Import file_detail_dialog at top of file
-            return const SizedBox(); // Placeholder - will be replaced by actual dialog
-          },
+          builder: (context) => FileDetailDialog(initialFile: processedFile),
         );
       }
     } else if (processedFile.error != null && context.mounted) {

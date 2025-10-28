@@ -191,6 +191,62 @@ class _SettingsDialogState extends State<SettingsDialog> {
 
             const SizedBox(height: 24),
 
+            // Divider
+            Container(
+              height: 1,
+              color: MacosTheme.of(context).dividerColor,
+            ),
+            const SizedBox(height: 24),
+
+            // Auto-rename dropped files
+            Text(
+              'Dropzone Behavior',
+              style: MacosTheme.of(context).typography.headline,
+            ),
+            const SizedBox(height: 12),
+            Watch((context) {
+              return GestureDetector(
+                onTap: () {
+                  widget.appState.autoRenameDropped.value =
+                      !widget.appState.autoRenameDropped.value;
+                },
+                child: Row(
+                  children: [
+                    MacosCheckbox(
+                      value: widget.appState.autoRenameDropped.value,
+                      onChanged: (value) {
+                        widget.appState.autoRenameDropped.value = value;
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Automatically rename dropped files',
+                            style: MacosTheme.of(context).typography.body,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'When enabled, files dropped on the Overview will be processed and renamed immediately without showing the detail dialog.',
+                            style: MacosTheme.of(context)
+                                .typography
+                                .caption1
+                                .copyWith(
+                                  color: CupertinoColors.systemGrey,
+                                ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+
+            const SizedBox(height: 24),
+
             // Action Buttons
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
