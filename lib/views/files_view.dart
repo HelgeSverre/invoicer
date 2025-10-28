@@ -1,7 +1,10 @@
 import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
+import 'package:invoicer/dialogs/export_settings_dialog.dart';
 import 'package:invoicer/dialogs/file_detail_dialog.dart';
 import 'package:invoicer/models.dart';
+import 'package:invoicer/models/export_settings.dart';
+import 'package:invoicer/services/export_service.dart';
 import 'package:invoicer/state.dart';
 import 'package:macos_ui/macos_ui.dart';
 import 'package:path/path.dart' as path;
@@ -42,6 +45,10 @@ class _FilesViewState extends State<FilesView> {
               _buildCurrentFolderInfo(context, currentFolder),
               const SizedBox(height: 16),
             ],
+
+            // Export Toolbar
+            _buildExportToolbar(context, allFiles),
+            const SizedBox(height: 16),
 
             // Table Header
             _buildTableHeader(context),
@@ -423,5 +430,316 @@ class _FilesViewState extends State<FilesView> {
         ],
       ),
     );
+  }
+
+  Widget _buildExportToolbar(BuildContext context, List<PdfDocument> files) {
+    // Only show processed files
+    final processedFiles = files.where((f) => f.vendor != null).toList();
+    final hasProcessedFiles = processedFiles.isNotEmpty;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: MacosTheme.of(context).canvasColor.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: MacosTheme.of(context).dividerColor),
+      ),
+      child: Row(
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${processedFiles.length} processed invoice${processedFiles.length != 1 ? 's' : ''}',
+                style: MacosTheme.of(context).typography.body,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Export or bulk rename',
+                style: MacosTheme.of(context).typography.caption1.copyWith(
+                      color: CupertinoColors.systemGrey,
+                    ),
+              ),
+            ],
+          ),
+          const Spacer(),
+          // Bulk Rename Button
+          PushButton(
+            controlSize: ControlSize.regular,
+            onPressed: hasProcessedFiles
+                ? () => _bulkRenameFiles(context, processedFiles)
+                : null,
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                MacosIcon(CupertinoIcons.pencil_circle, size: 16),
+                SizedBox(width: 6),
+                Text('Bulk Rename'),
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          // Export buttons
+          PushButton(
+            controlSize: ControlSize.regular,
+            secondary: true,
+            onPressed: hasProcessedFiles
+                ? () => _exportFiles(context, processedFiles, ExportFormat.csv)
+                : null,
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                MacosIcon(CupertinoIcons.table, size: 16),
+                SizedBox(width: 6),
+                Text('CSV'),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          PushButton(
+            controlSize: ControlSize.regular,
+            secondary: true,
+            onPressed: hasProcessedFiles
+                ? () => _exportFiles(context, processedFiles, ExportFormat.json)
+                : null,
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                MacosIcon(CupertinoIcons.doc_text, size: 16),
+                SizedBox(width: 6),
+                Text('JSON'),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          PushButton(
+            controlSize: ControlSize.regular,
+            secondary: true,
+            onPressed: hasProcessedFiles
+                ? () =>
+                    _exportFiles(context, processedFiles, ExportFormat.excel)
+                : null,
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                MacosIcon(CupertinoIcons.table_badge_more, size: 16),
+                SizedBox(width: 6),
+                Text('Excel'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _exportFiles(
+    BuildContext context,
+    List<PdfDocument> files,
+    ExportFormat format,
+  ) async {
+    // Show export settings dialog first
+    final settings = await showMacosSheet<ExportSettings>(
+      context: context,
+      builder: (context) => ExportSettingsDialog(
+        initialSettings: ExportSettings.defaultSettings,
+      ),
+    );
+
+    // User cancelled
+    if (settings == null || !context.mounted) return;
+
+    try {
+      String? outputPath;
+
+      switch (format) {
+        case ExportFormat.csv:
+          outputPath = await ExportService.exportToCSV(
+            files,
+            settings: settings,
+          );
+          break;
+        case ExportFormat.json:
+          outputPath = await ExportService.exportToJSON(
+            files,
+            settings: settings,
+          );
+          break;
+        case ExportFormat.excel:
+          outputPath = await ExportService.exportToExcel(
+            files,
+            settings: settings,
+          );
+          break;
+      }
+
+      if (outputPath != null && context.mounted) {
+        showMacosAlertDialog(
+          context: context,
+          builder: (context) => MacosAlertDialog(
+            appIcon: const MacosIcon(CupertinoIcons.check_mark_circled),
+            title: const Text('Export Successful'),
+            message: Text(
+              'Exported ${files.length} invoice${files.length != 1 ? 's' : ''} to:\n$outputPath',
+            ),
+            primaryButton: PushButton(
+              controlSize: ControlSize.large,
+              child: const Text('OK'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        showMacosAlertDialog(
+          context: context,
+          builder: (context) => MacosAlertDialog(
+            appIcon: const MacosIcon(CupertinoIcons.exclamationmark_triangle),
+            title: const Text('Export Failed'),
+            message: Text('Failed to export files: $e'),
+            primaryButton: PushButton(
+              controlSize: ControlSize.large,
+              child: const Text('OK'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _bulkRenameFiles(
+    BuildContext context,
+    List<PdfDocument> files,
+  ) async {
+    // Show confirmation dialog first
+    final confirmed = await showMacosAlertDialog<bool>(
+      context: context,
+      builder: (context) => MacosAlertDialog(
+        appIcon: const MacosIcon(CupertinoIcons.pencil_circle),
+        title: const Text('Bulk Rename'),
+        message: Text(
+          'Rename ${files.length} processed file${files.length != 1 ? 's' : ''} using the filename template?\n\n'
+          'Template: ${widget.appState.filenameTemplate.value}',
+        ),
+        primaryButton: PushButton(
+          controlSize: ControlSize.large,
+          child: const Text('Rename'),
+          onPressed: () => Navigator.of(context).pop(true),
+        ),
+        secondaryButton: PushButton(
+          controlSize: ControlSize.large,
+          secondary: true,
+          child: const Text('Cancel'),
+          onPressed: () => Navigator.of(context).pop(false),
+        ),
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    // Show progress indicator
+    showMacosAlertDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => MacosAlertDialog(
+        appIcon: const MacosIcon(CupertinoIcons.clock),
+        title: const Text('Renaming Files'),
+        message: const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Please wait...'),
+            SizedBox(height: 16),
+            ProgressCircle(),
+          ],
+        ),
+        primaryButton: PushButton(
+          controlSize: ControlSize.large,
+          onPressed: null,
+          child: const Text('Please wait...'),
+        ),
+      ),
+    );
+
+    try {
+      final result = await widget.appState.bulkRenameFiles(files, context);
+
+      if (context.mounted) {
+        // Close progress dialog
+        Navigator.of(context).pop();
+
+        // Show result dialog
+        showMacosAlertDialog(
+          context: context,
+          builder: (context) => MacosAlertDialog(
+            appIcon: MacosIcon(
+              result.hasErrors
+                  ? CupertinoIcons.exclamationmark_triangle
+                  : CupertinoIcons.check_mark_circled,
+            ),
+            title: const Text('Bulk Rename Complete'),
+            message: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Successfully renamed: ${result.successCount}\n'
+                    'Failed: ${result.failureCount}',
+                  ),
+                  if (result.errors.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Errors:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 4),
+                    ...result.errors.take(5).map(
+                          (error) => Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              '• $error',
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ),
+                        ),
+                    if (result.errors.length > 5)
+                      Text(
+                        '\n... and ${result.errors.length - 5} more errors',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                  ],
+                ],
+              ),
+            ),
+            primaryButton: PushButton(
+              controlSize: ControlSize.large,
+              child: const Text('OK'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        // Close progress dialog
+        Navigator.of(context).pop();
+
+        showMacosAlertDialog(
+          context: context,
+          builder: (context) => MacosAlertDialog(
+            appIcon: const MacosIcon(CupertinoIcons.exclamationmark_triangle),
+            title: const Text('Bulk Rename Failed'),
+            message: Text('An error occurred: $e'),
+            primaryButton: PushButton(
+              controlSize: ControlSize.large,
+              child: const Text('OK'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ),
+        );
+      }
+    }
   }
 }
