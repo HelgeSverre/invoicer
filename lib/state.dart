@@ -5,9 +5,9 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:intl/intl.dart';
 import 'package:invoicer/extractor.dart';
 import 'package:invoicer/models.dart';
+import 'package:invoicer/services/filename_template_service.dart';
 import 'package:macos_ui/macos_ui.dart';
 import 'package:path/path.dart' as path;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -28,7 +28,7 @@ class AppState {
   final currentlySelectedFolder = signal<ProjectFolder?>(null);
 
   // UI state
-  final currentView = signal<String>('files'); // 'folders' or 'files'
+  final currentView = signal<String>('overview'); // 'overview', 'folder', or 'all_files'
 
   final pdfFiles = listSignal<PdfDocument>([]);
   final individualFiles = listSignal<PdfDocument>(
@@ -37,6 +37,8 @@ class AppState {
   final apiKey = signal<String>("");
   final aiModel = signal<String>("gpt-4.1-mini");
   final isProcessingAll = signal<bool>(false);
+  final filenameTemplate = signal<String>("[YEAR]-[MONTH]-[DAY] - [VENDOR].pdf");
+  final autoRenameDropped = signal<bool>(false);
 
   Future<void> loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
@@ -52,6 +54,10 @@ class AppState {
           fallback: prefs.getString('openai_model'),
         ) ??
         "gpt-4.1-mini";
+
+    filenameTemplate.value = prefs.getString('filename_template') ??
+        "[YEAR]-[MONTH]-[DAY] - [VENDOR].pdf";
+    autoRenameDropped.value = prefs.getBool('auto_rename_dropped') ?? false;
 
     // Load legacy single folder for backwards compatibility
     selectedFolder.value = prefs.getString('selected_folder');
@@ -92,7 +98,7 @@ class AppState {
     }
 
     // Load current view
-    currentView.value = prefs.getString('current_view') ?? 'files';
+    currentView.value = prefs.getString('current_view') ?? 'overview';
 
     // Load currently selected folder
     final currentFolderPath = prefs.getString('currently_selected_folder');
@@ -111,6 +117,8 @@ class AppState {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('openai_api_key', apiKey.value);
     await prefs.setString('openai_model', aiModel.value);
+    await prefs.setString('filename_template', filenameTemplate.value);
+    await prefs.setBool('auto_rename_dropped', autoRenameDropped.value);
 
     // Save legacy folder for backwards compatibility
     if (selectedFolder.value != null) {
@@ -356,16 +364,15 @@ class AppState {
   }
 
   Future<void> renameFile(PdfDocument file, BuildContext context) async {
-    if (file.invoiceDate == null || file.vendor == null) {
+    if (file.vendor == null) {
       return;
     }
 
-    final dateStr = DateFormat('yyyy-MM-dd').format(file.invoiceDate!);
-    final sanitizedVendor = file.vendor!.replaceAll(
-      RegExp(r'[<>:"/\\|?*]'),
-      '_',
+    // Use the filename template
+    final newName = FilenameTemplateService.applyTemplate(
+      filenameTemplate.value,
+      file,
     );
-    final newName = '$dateStr - $sanitizedVendor.pdf';
     final newPath = path.join(path.dirname(file.path), newName);
 
     // Don't rename if the path would be the same
@@ -648,4 +655,163 @@ class AppState {
   List<PdfDocument> get allFiles {
     return [...pdfFiles, ...individualFiles];
   }
+
+  /// Process a dropped file with optional auto-rename
+  Future<void> processDroppedFile(String filePath, BuildContext context) async {
+    // Add the file as an individual file
+    await _addIndividualFile(filePath);
+
+    // Find the newly added file
+    final file = individualFiles.firstWhere((f) => f.path == filePath);
+
+    // Process the file with AI
+    await processFile(file);
+
+    // Check if processing was successful
+    final processedFile = individualFiles.firstWhere((f) => f.path == filePath);
+
+    if (processedFile.vendor != null && context.mounted) {
+      if (autoRenameDropped.value) {
+        // Auto-rename without showing dialog
+        await renameFile(processedFile, context);
+
+        // Show success notification
+        if (context.mounted) {
+          showMacosAlertDialog(
+            context: context,
+            builder: (context) => MacosAlertDialog(
+              appIcon: const MacosIcon(CupertinoIcons.checkmark_circle_fill),
+              title: const Text('File Processed'),
+              message: Text(
+                'Successfully processed and renamed:\n${processedFile.vendor}',
+              ),
+              primaryButton: PushButton(
+                controlSize: ControlSize.large,
+                child: const Text('OK'),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ),
+          );
+        }
+      } else {
+        // Show file detail dialog for manual review
+        await showMacosSheet(
+          context: context,
+          barrierDismissible: true,
+          builder: (context) {
+            // Import file_detail_dialog at top of file
+            return const SizedBox(); // Placeholder - will be replaced by actual dialog
+          },
+        );
+      }
+    } else if (processedFile.error != null && context.mounted) {
+      // Show error dialog
+      showMacosAlertDialog(
+        context: context,
+        builder: (context) => MacosAlertDialog(
+          appIcon: const MacosIcon(CupertinoIcons.exclamationmark_triangle),
+          title: const Text('Processing Failed'),
+          message: Text('Error processing file:\n${processedFile.error}'),
+          primaryButton: PushButton(
+            controlSize: ControlSize.large,
+            child: const Text('OK'),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ),
+      );
+    }
+  }
+
+  /// Bulk rename multiple files using the filename template
+  Future<BulkRenameResult> bulkRenameFiles(
+    List<PdfDocument> files,
+    BuildContext context,
+  ) async {
+    int successCount = 0;
+    int failureCount = 0;
+    final List<String> errors = [];
+
+    for (var file in files) {
+      // Skip files without vendor (not processed)
+      if (file.vendor == null) {
+        continue;
+      }
+
+      try {
+        // Use the filename template
+        final newName = FilenameTemplateService.applyTemplate(
+          filenameTemplate.value,
+          file,
+        );
+        final newPath = path.join(path.dirname(file.path), newName);
+
+        // Skip if already has correct name
+        if (file.path == newPath) {
+          continue;
+        }
+
+        // Check if target file already exists
+        if (File(newPath).existsSync()) {
+          errors.add('${file.name}: Target file already exists');
+          failureCount++;
+          continue;
+        }
+
+        // Find the file in the appropriate list
+        final folderIndex = pdfFiles.indexOf(file);
+        final individualIndex = individualFiles.indexOf(file);
+
+        if (folderIndex == -1 && individualIndex == -1) {
+          continue;
+        }
+
+        // Perform the actual filesystem rename
+        await File(file.path).rename(newPath);
+
+        // Update the file in the appropriate list
+        if (folderIndex != -1) {
+          pdfFiles[folderIndex] = file.copyWith(name: newName, path: newPath);
+        } else {
+          individualFiles[individualIndex] = file.copyWith(
+            name: newName,
+            path: newPath,
+          );
+        }
+
+        successCount++;
+      } on FileSystemException catch (e) {
+        errors.add('${file.name}: ${e.message}');
+        failureCount++;
+      } catch (e) {
+        errors.add('${file.name}: $e');
+        failureCount++;
+      }
+    }
+
+    // Persist changes if any succeeded
+    if (successCount > 0) {
+      await saveSettings();
+    }
+
+    return BulkRenameResult(
+      successCount: successCount,
+      failureCount: failureCount,
+      errors: errors,
+    );
+  }
+}
+
+class BulkRenameResult {
+  final int successCount;
+  final int failureCount;
+  final List<String> errors;
+
+  BulkRenameResult({
+    required this.successCount,
+    required this.failureCount,
+    required this.errors,
+  });
+
+  bool get hasErrors => failureCount > 0;
+  int get totalProcessed => successCount + failureCount;
 }

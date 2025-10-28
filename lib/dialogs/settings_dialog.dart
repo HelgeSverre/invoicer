@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:invoicer/services/filename_template_service.dart';
 import 'package:invoicer/state.dart';
 import 'package:macos_ui/macos_ui.dart';
 import 'package:signals/signals_flutter.dart';
@@ -14,8 +15,11 @@ class SettingsDialog extends StatefulWidget {
 
 class _SettingsDialogState extends State<SettingsDialog> {
   late TextEditingController _apiKeyController;
+  late TextEditingController _filenameTemplateController;
   late String _selectedModel;
   bool _obscureApiKey = true;
+  String? _templateError;
+  bool _showPlaceholderHelp = false;
 
   final List<String> _availableModels = [
     'gpt-4.1',
@@ -29,7 +33,22 @@ class _SettingsDialogState extends State<SettingsDialog> {
     _apiKeyController = TextEditingController(
       text: widget.appState.apiKey.value,
     );
+    _filenameTemplateController = TextEditingController(
+      text: widget.appState.filenameTemplate.value,
+    );
     _selectedModel = widget.appState.aiModel.value;
+
+    // Validate template on change
+    _filenameTemplateController.addListener(_validateTemplate);
+  }
+
+  void _validateTemplate() {
+    final validation = FilenameTemplateService.validateTemplate(
+      _filenameTemplateController.text,
+    );
+    setState(() {
+      _templateError = validation.isValid ? null : validation.error;
+    });
   }
 
   @override
@@ -133,6 +152,45 @@ class _SettingsDialogState extends State<SettingsDialog> {
 
             const SizedBox(height: 24),
 
+            // Divider
+            Container(
+              height: 1,
+              color: MacosTheme.of(context).dividerColor,
+            ),
+            const SizedBox(height: 24),
+
+            // Filename Template Section
+            Text(
+              'Filename Template',
+              style: MacosTheme.of(context).typography.headline,
+            ),
+            const SizedBox(height: 8),
+            MacosTextField(
+              controller: _filenameTemplateController,
+              placeholder: '[YEAR]-[MONTH]-[DAY] - [VENDOR].pdf',
+              prefix: const MacosIcon(CupertinoIcons.doc_text),
+            ),
+            if (_templateError != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                _templateError!,
+                style: MacosTheme.of(context).typography.caption1.copyWith(
+                      color: CupertinoColors.systemRed,
+                    ),
+              ),
+            ],
+            const SizedBox(height: 8),
+            Text(
+              'Available placeholders: ${FilenameTemplateService.getAvailablePlaceholders().map((p) => p.name).join(', ')}',
+              style: MacosTheme.of(context).typography.caption1.copyWith(
+                    color: CupertinoColors.systemGrey,
+                  ),
+            ),
+            const SizedBox(height: 4),
+            _buildPlaceholderHelp(context),
+
+            const SizedBox(height: 24),
+
             // Action Buttons
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -146,12 +204,16 @@ class _SettingsDialogState extends State<SettingsDialog> {
                 const SizedBox(width: 12),
                 PushButton(
                   controlSize: ControlSize.large,
-                  onPressed: () {
-                    widget.appState.apiKey.value = _apiKeyController.text;
-                    widget.appState.aiModel.value = _selectedModel;
-                    widget.appState.saveSettings();
-                    Navigator.of(context).pop();
-                  },
+                  onPressed: _templateError == null
+                      ? () {
+                          widget.appState.apiKey.value = _apiKeyController.text;
+                          widget.appState.aiModel.value = _selectedModel;
+                          widget.appState.filenameTemplate.value =
+                              _filenameTemplateController.text;
+                          widget.appState.saveSettings();
+                          Navigator.of(context).pop();
+                        }
+                      : null,
                   child: const Text('Save'),
                 ),
               ],
@@ -162,9 +224,92 @@ class _SettingsDialogState extends State<SettingsDialog> {
     );
   }
 
+  Widget _buildPlaceholderHelp(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Toggle button
+        GestureDetector(
+          onTap: () {
+            setState(() {
+              _showPlaceholderHelp = !_showPlaceholderHelp;
+            });
+          },
+          child: Row(
+            children: [
+              MacosIcon(
+                _showPlaceholderHelp
+                    ? CupertinoIcons.chevron_down
+                    : CupertinoIcons.chevron_right,
+                size: 12,
+                color: CupertinoColors.systemGrey,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                'Show placeholder descriptions',
+                style: MacosTheme.of(context).typography.caption1.copyWith(
+                      color: CupertinoColors.systemGrey,
+                    ),
+              ),
+            ],
+          ),
+        ),
+
+        // Placeholder list (conditionally shown)
+        if (_showPlaceholderHelp) ...[
+          const SizedBox(height: 8),
+          _buildPlaceholderList(context),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildPlaceholderList(BuildContext context) {
+    final placeholders = FilenameTemplateService.getAvailablePlaceholders();
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: MacosTheme.of(context).canvasColor.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: MacosTheme.of(context).dividerColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: placeholders.map((placeholder) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: 120,
+                  child: Text(
+                    placeholder.name,
+                    style: MacosTheme.of(context).typography.body.copyWith(
+                          fontFamily: 'monospace',
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    placeholder.description,
+                    style: MacosTheme.of(context).typography.caption1,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _apiKeyController.dispose();
+    _filenameTemplateController.dispose();
     super.dispose();
   }
 }
