@@ -4,7 +4,6 @@ import 'package:invoicer/extractor.dart';
 
 void main() {
   group('Extractor.extractReceiptData', () {
-
     test('throws exception when API key is empty', () async {
       // Arrange
       const sampleText = 'Invoice text';
