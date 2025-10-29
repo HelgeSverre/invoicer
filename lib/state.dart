@@ -46,6 +46,10 @@ class AppState {
       signal<String>("[YEAR]-[MONTH]-[DAY] - [VENDOR].pdf");
   final autoRenameDropped = signal<bool>(false);
 
+  // Dropzone processing state
+  final isProcessingDropped = signal<bool>(false);
+  final droppedFileProgress = signal<DroppedFileProgress?>(null);
+
   Future<void> loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
     apiKey.value = dotenv.maybeGet(
@@ -280,17 +284,20 @@ class AppState {
 
   Future<void> processFile(PdfDocument file) async {
     _logger.info('Processing ${file.name}');
+    debugPrint('[AppState] processFile START: ${file.name}');
 
     // Find the file in the appropriate list
     int folderIndex = pdfFiles.indexOf(file);
     int individualIndex = individualFiles.indexOf(file);
+    debugPrint('[AppState] File indices: folderIndex=$folderIndex, individualIndex=$individualIndex');
 
     if ((folderIndex == -1 && individualIndex == -1) || file.isProcessing) {
-      debugPrint('Warning: File not found or already processing: ${file.name}');
+      debugPrint('[AppState] WARNING: File not found or already processing: ${file.name}');
       return;
     }
 
     // Update processing state in the correct list
+    debugPrint('[AppState] Setting isProcessing=true for ${file.name}');
     if (folderIndex != -1) {
       pdfFiles[folderIndex] = file.copyWith(isProcessing: true, error: null);
     } else {
@@ -302,19 +309,23 @@ class AppState {
 
     try {
       // Extract text from PDF
+      debugPrint('[AppState] Extracting text from PDF: ${file.path}');
       final textContent = await Extractor.extractTextFromPDF(file.path);
+      debugPrint('[AppState] Text extraction complete: ${textContent.length} characters');
 
       if (textContent.trim().isEmpty) {
-        debugPrint('Error: No text found in PDF: ${file.name}');
+        debugPrint('[AppState] ERROR: No text found in PDF: ${file.name}');
         throw Exception('No text found in PDF');
       }
 
       // Analyze with OpenAI
+      debugPrint('[AppState] Calling OpenAI API for ${file.name}...');
       final result = await Extractor.extractReceiptData(
         textContent,
         apiKey.value,
         model: aiModel.value,
       );
+      debugPrint('[AppState] OpenAI API response received');
 
       final updatedFile = file.copyWith(
         items: (result['items'] as List<dynamic>?)
@@ -732,18 +743,27 @@ class AppState {
     bool showDialog = true,
   }) async {
     _logger.info('Processing dropped file: ${path.basename(filePath)}');
+    debugPrint('[AppState] processDroppedFile START: $filePath');
 
     // Add the file as an individual file
+    debugPrint('[AppState] Adding file to individualFiles...');
     await _addIndividualFile(filePath);
+    debugPrint('[AppState] File added, individualFiles count: ${individualFiles.length}');
 
     // Find the newly added file
+    debugPrint('[AppState] Finding newly added file...');
     final file = individualFiles.firstWhere((f) => f.path == filePath);
+    debugPrint('[AppState] Found file: ${file.name}');
 
     // Process the file with AI
+    debugPrint('[AppState] Starting AI processing...');
     await processFile(file);
+    debugPrint('[AppState] AI processing complete');
 
     // Check if processing was successful
+    debugPrint('[AppState] Checking processed file status...');
     final processedFile = individualFiles.firstWhere((f) => f.path == filePath);
+    debugPrint('[AppState] Processed file: vendor=${processedFile.vendor}, error=${processedFile.error}');
 
     if (processedFile.vendor != null && context.mounted) {
       // Auto-rename if enabled
@@ -930,4 +950,16 @@ class BulkRenameResult {
 
   bool get hasErrors => failureCount > 0;
   int get totalProcessed => successCount + failureCount;
+}
+
+class DroppedFileProgress {
+  final int current;
+  final int total;
+  final String? currentFileName;
+
+  DroppedFileProgress({
+    required this.current,
+    required this.total,
+    this.currentFileName,
+  });
 }
