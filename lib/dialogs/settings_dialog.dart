@@ -192,6 +192,35 @@ class _SettingsDialogState extends State<SettingsDialog> {
 
               const SizedBox(height: 24),
 
+              // Divider
+              Container(
+                height: 1,
+                color: MacosTheme.of(context).dividerColor,
+              ),
+              const SizedBox(height: 24),
+
+              // Danger Zone
+              Text(
+                'Danger Zone',
+                style: MacosTheme.of(context).typography.headline,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Reset all app data including folders, processed files, and cache. This will NOT reset your API key, model selection, or filename template.',
+                style: MacosTheme.of(context).typography.caption1.copyWith(
+                      color: CupertinoColors.systemGrey,
+                    ),
+              ),
+              const SizedBox(height: 12),
+              PushButton(
+                controlSize: ControlSize.large,
+                color: CupertinoColors.systemRed,
+                onPressed: () => _showResetConfirmation(context),
+                child: const Text('Reset App Data'),
+              ),
+
+              const SizedBox(height: 24),
+
               // Action Buttons
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
@@ -222,6 +251,71 @@ class _SettingsDialogState extends State<SettingsDialog> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  void _showResetConfirmation(BuildContext context) {
+    showMacosAlertDialog(
+      context: context,
+      builder: (dialogContext) => MacosAlertDialog(
+        appIcon: const MacosIcon(
+          CupertinoIcons.exclamationmark_triangle,
+          size: 64,
+        ),
+        title: const Text('Reset App Data?'),
+        message: const Text(
+          'This will permanently delete:\n'
+          '• All added folders\n'
+          '• All processed files and their data\n'
+          '• Cached extraction data\n\n'
+          'Your API key, model selection, and filename template will be preserved.\n\n'
+          'This action cannot be undone.',
+        ),
+        primaryButton: PushButton(
+          controlSize: ControlSize.large,
+          color: CupertinoColors.systemRed,
+          onPressed: () async {
+            // Close confirmation dialog
+            Navigator.of(dialogContext).pop();
+
+            // Perform reset
+            await widget.appState.resetAppData();
+
+            // Close settings dialog
+            if (context.mounted) {
+              Navigator.of(context).pop();
+            }
+
+            // Show success message
+            if (context.mounted) {
+              showMacosAlertDialog(
+                context: context,
+                builder: (context) => MacosAlertDialog(
+                  appIcon: const MacosIcon(
+                    CupertinoIcons.checkmark_circle_fill,
+                    size: 64,
+                  ),
+                  title: const Text('App Data Reset'),
+                  message:
+                      const Text('All app data has been successfully reset.'),
+                  primaryButton: PushButton(
+                    controlSize: ControlSize.large,
+                    child: const Text('OK'),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ),
+              );
+            }
+          },
+          child: const Text('Reset'),
+        ),
+        secondaryButton: PushButton(
+          controlSize: ControlSize.large,
+          secondary: true,
+          onPressed: () => Navigator.of(dialogContext).pop(),
+          child: const Text('Cancel'),
         ),
       ),
     );
