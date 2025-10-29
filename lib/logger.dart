@@ -15,6 +15,7 @@ class AppLogger {
   static File? _logFile;
   static IOSink? _logSink;
   static DateTime? _currentLogDate;
+  static bool _isInitializing = false;
 
   // ANSI color pens for different log levels
   static final _errorPen = AnsiPen()..red();
@@ -37,29 +38,46 @@ class AppLogger {
 
   /// Initialize or rotate log file if needed
   static Future<void> _ensureLogFile() async {
+    // Prevent concurrent initialization
+    if (_isInitializing) {
+      return;
+    }
+
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
     // Check if we need to create or rotate the log file
     if (_logFile == null || _currentLogDate != today) {
-      // Close existing sink if any
-      await _logSink?.close();
+      _isInitializing = true;
 
-      // Create log directory if it doesn't exist
-      final logDir = Directory(_logDir);
-      if (!await logDir.exists()) {
-        await logDir.create(recursive: true);
+      try {
+        // Close existing sink if any
+        try {
+          await _logSink?.flush();
+          await _logSink?.close();
+        } catch (e) {
+          // Ignore errors when closing
+        }
+        _logSink = null;
+
+        // Create log directory if it doesn't exist
+        final logDir = Directory(_logDir);
+        if (!await logDir.exists()) {
+          await logDir.create(recursive: true);
+        }
+
+        // Create new log file for today
+        final dateStr = DateFormat('yyyy-MM-dd').format(now);
+        final logPath = path.join(_logDir, 'invoicer_$dateStr.log');
+        _logFile = File(logPath);
+        _logSink = _logFile!.openWrite(mode: FileMode.append);
+        _currentLogDate = today;
+
+        // Clean up old log files (keep last 7 days)
+        _cleanupOldLogs();
+      } finally {
+        _isInitializing = false;
       }
-
-      // Create new log file for today
-      final dateStr = DateFormat('yyyy-MM-dd').format(now);
-      final logPath = path.join(_logDir, 'invoicer_$dateStr.log');
-      _logFile = File(logPath);
-      _logSink = _logFile!.openWrite(mode: FileMode.append);
-      _currentLogDate = today;
-
-      // Clean up old log files (keep last 7 days)
-      _cleanupOldLogs();
     }
   }
 
@@ -101,20 +119,24 @@ class AppLogger {
     // Write to file (without color codes)
     try {
       await _ensureLogFile();
-      _logSink?.writeln(plainLogMessage);
 
-      if (error != null) {
-        _logSink?.writeln('  Error: $error');
+      // Only write if sink is available and not closed
+      if (_logSink != null && !_isInitializing) {
+        _logSink!.writeln(plainLogMessage);
+
+        if (error != null) {
+          _logSink!.writeln('  Error: $error');
+        }
+
+        if (stackTrace != null) {
+          _logSink!.writeln('  Stack trace:');
+          _logSink!.writeln('  $stackTrace');
+        }
+
+        await _logSink!.flush();
       }
-
-      if (stackTrace != null) {
-        _logSink?.writeln('  Stack trace:');
-        _logSink?.writeln('  $stackTrace');
-      }
-
-      await _logSink?.flush();
     } catch (e) {
-      debugPrint('Failed to write to log file: $e');
+      // Silently fail on log file errors - don't spam console
     }
   }
 
