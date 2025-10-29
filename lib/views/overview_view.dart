@@ -366,13 +366,9 @@ class _OverviewViewState extends State<OverviewView> {
             ),
           ),
           child: Center(
-            child: () {
-              final isProcessing = widget.appState.isProcessingDropped.value;
-              debugPrint('[OverviewView] Building dropzone center: isProcessing=$isProcessing');
-              return isProcessing
-                  ? _buildProcessingState()
-                  : _buildIdleState();
-            }(),
+            child: widget.appState.isProcessingDropped.value
+                ? _buildProcessingState()
+                : _buildIdleState(),
           ),
         ),
       ),
@@ -381,7 +377,6 @@ class _OverviewViewState extends State<OverviewView> {
 
   Widget _buildProcessingState() {
     final progress = widget.appState.droppedFileProgress.value;
-    debugPrint('[OverviewView] _buildProcessingState called: current=${progress?.current}, total=${progress?.total}, file=${progress?.currentFileName}');
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
